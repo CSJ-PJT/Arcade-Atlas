@@ -119,6 +119,45 @@ test('two browsers create, join, ready and start the same seeded match', async (
   await guestContext.close()
 })
 
+test('a disconnected player resumes the same room and match within the grace window', async ({ browser }) => {
+  test.setTimeout(45_000)
+  const hostContext = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' })
+  const guestContext = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' })
+  const host = await hostContext.newPage()
+  let guest = await guestContext.newPage()
+
+  await host.goto('/arcade/stack/multi')
+  await host.getByLabel('표시 이름').fill('Reconnect Host')
+  await host.getByRole('button', { name: '새 방 만들기' }).click()
+  const roomCode = (await host.getByTestId('room-code').textContent())?.trim() ?? ''
+
+  await guest.goto('/arcade/stack/multi')
+  await guest.getByLabel('표시 이름').fill('Reconnect Guest')
+  await guest.getByLabel('방 코드').fill(roomCode)
+  await guest.getByRole('button', { name: '참가' }).click()
+  await host.getByRole('button', { name: '준비 완료' }).click()
+  await guest.getByRole('button', { name: '준비 완료' }).click()
+  await host.getByRole('button', { name: '동시 시작' }).click()
+  await expect(guest.getByTestId('multiplayer-match')).toHaveAttribute('data-game-status', 'playing')
+  const seedBefore = await guest.locator('.multiplayer-scoreboard .seed-readout code').textContent()
+
+  const resumeState = await guest.evaluate(() => sessionStorage.getItem('arcade:gravity-stack:multiplayer-session:v1'))
+  await guest.close()
+  await expect(host.locator('.player-standings')).toContainText('OFFLINE', { timeout: 10_000 })
+  guest = await guestContext.newPage()
+  await guest.addInitScript((value) => {
+    if (value) sessionStorage.setItem('arcade:gravity-stack:multiplayer-session:v1', value)
+  }, resumeState)
+  await guest.goto('/arcade/stack/multi')
+
+  await expect(guest.getByTestId('multiplayer-page')).toHaveAttribute('data-connection', 'open', { timeout: 15_000 })
+  await expect(host.locator('.player-standings')).not.toContainText('OFFLINE', { timeout: 15_000 })
+  await expect(guest.getByTestId('multiplayer-match')).toBeVisible()
+  expect(await guest.locator('.multiplayer-scoreboard .seed-readout code').textContent()).toBe(seedBefore)
+  await hostContext.close()
+  await guestContext.close()
+})
+
 for (const viewport of [
   { width: 360, height: 800 },
   { width: 390, height: 844 },

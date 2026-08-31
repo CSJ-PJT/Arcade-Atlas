@@ -7,6 +7,8 @@
 .multiplayer-entry__actions { display: grid; gap: 16px; margin-top: 18px; }
 .join-controls { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10px; }
 .connection-note { font-size: .78rem; }
+.reconnect-banner { position: sticky; top: 8px; z-index: 20; width: min(720px, 100%); margin: 12px auto 0; padding: 10px 14px; border: 1px solid var(--amber); border-radius: 10px; color: #fff2c8; background: rgba(79, 54, 5, .94); text-align: center; }
+.reconnect-panel { text-align: center; }
 .form-error { padding: 10px 12px; border: 1px solid #ff6c8f; border-radius: 10px; color: #ffdce5 !important; background: rgba(130, 20, 50, .25); }
 .lobby-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
 .lobby-actions button:disabled { opacity: .45; cursor: not-allowed; }
@@ -16,6 +18,7 @@
 .player-standings { display: grid; gap: 8px; padding: 0; margin: 22px 0 0; list-style: none; }
 .player-standings li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; min-height: 58px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(5, 18, 30, .72); }
 .player-standings li[data-self="true"] { border-color: var(--cyan); }
+.player-standings li[data-connected="false"] { opacity: .58; border-style: dashed; }
 .player-standings li span { display: flex; flex-direction: column; gap: 3px; }
 .player-standings li span:nth-child(2) { align-items: end; color: var(--muted); font-size: .74rem; }
 .player-standings small, .player-standings em { color: var(--amber); font-size: .58rem; font-style: normal; letter-spacing: .1em; }

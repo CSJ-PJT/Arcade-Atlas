@@ -30,7 +30,11 @@ export function MultiplayerGravityStackPage() {
         <AtlasBrand compact />
         <Link className="text-link" to="/">미션 선택</Link>
       </header>
-      {!multiplayer.room && (
+      {multiplayer.connection === 'reconnecting' && <p className="reconnect-banner" role="status">연결이 잠시 끊겼습니다. 방을 유지한 채 자동 복구 중입니다.</p>}
+      {!multiplayer.room && multiplayer.playerId && (
+        <section className="multiplayer-entry reconnect-panel" aria-live="polite"><p className="kicker">LINK RECOVERY</p><h1>이전 방으로 복귀 중</h1><p>30초 안에 연결이 돌아오면 진행 상태를 그대로 이어갑니다.</p></section>
+      )}
+      {!multiplayer.room && !multiplayer.playerId && (
         <section className="multiplayer-entry" aria-labelledby="multi-title">
           <p className="kicker">LIVE ENERGY RACE</p>
           <h1 id="multi-title">Gravity Stack 실시간 대전</h1>
@@ -51,14 +55,14 @@ export function MultiplayerGravityStackPage() {
         <MultiplayerLobby room={multiplayer.room} me={me} error={multiplayer.error} onReady={multiplayer.setReady} onStart={multiplayer.startMatch} />
       )}
       {multiplayer.room && multiplayer.match && me && (
-        <MultiplayerMatch room={multiplayer.room} me={me} match={multiplayer.match} sendProgress={multiplayer.sendProgress} />
+        <MultiplayerMatch room={multiplayer.room} me={me} match={multiplayer.match} sendProgress={multiplayer.sendProgress} onRematch={multiplayer.rematch} />
       )}
     </main>
   )
 }
 
 function MultiplayerLobby({ room, me, error, onReady, onStart }: { room: MultiplayerRoom; me: MultiplayerPlayer; error: string; onReady: (ready: boolean) => boolean; onStart: () => boolean }) {
-  const allReady = room.players.length >= 2 && room.players.every((player) => player.ready)
+  const allReady = room.players.length >= 2 && room.players.every((player) => player.connected && player.ready)
   return (
     <section className="multiplayer-lobby" data-testid="multiplayer-lobby">
       <p className="kicker">ROOM LINK</p>
@@ -74,7 +78,7 @@ function MultiplayerLobby({ room, me, error, onReady, onStart }: { room: Multipl
   )
 }
 
-function MultiplayerMatch({ room, me, match, sendProgress }: { room: MultiplayerRoom; me: MultiplayerPlayer; match: MatchStart; sendProgress: (progress: { matchId: string; score: number; level: number; cleared: number; gameStatus: string }) => boolean }) {
+function MultiplayerMatch({ room, me, match, sendProgress, onRematch }: { room: MultiplayerRoom; me: MultiplayerPlayer; match: MatchStart; sendProgress: (progress: { matchId: string; score: number; level: number; cleared: number; gameStatus: string }) => boolean; onRematch: () => boolean }) {
   const engine = useMemo(() => new GravityStackEngine(match.seed), [match.seed])
   const [snapshot, setSnapshot] = useState(() => engine.getSnapshot())
   const sentRef = useRef({ at: 0, score: -1, status: '' })
@@ -87,6 +91,10 @@ function MultiplayerMatch({ room, me, match, sendProgress }: { room: Multiplayer
     }, delay)
     return () => window.clearTimeout(timer)
   }, [engine, match.startsAt])
+
+  useEffect(() => {
+    if (room.status === 'finished') engine.pause()
+  }, [engine, room.status])
 
   const publish = useCallback((next: EngineSnapshot) => {
     setSnapshot(next)
@@ -110,7 +118,7 @@ function MultiplayerMatch({ room, me, match, sendProgress }: { room: Multiplayer
         <div className="board-frame" tabIndex={0} aria-label="멀티플레이 Gravity Stack 게임 보드">
           <GravityStackCanvas engine={engine} onSnapshot={publish} />
           {snapshot.status === 'ready' && <div className="game-overlay"><p className="kicker">SYNC COUNTDOWN</p><h2>동시 시작 준비 중</h2></div>}
-          {snapshot.status === 'gameOver' && <div className="game-overlay" role="dialog" aria-label="대전 종료"><p className="kicker">RUN COMPLETE</p><h2>내 플레이 종료</h2><p>다른 참가자의 최종 기록을 기다리는 중입니다.</p><Link className="secondary-action" to="/">Arcade 홈</Link></div>}
+          {room.status === 'finished' ? <div className="game-overlay" role="dialog" aria-label="대전 종료"><p className="kicker">MATCH COMPLETE</p><h2>대전 종료</h2><p>최종 순위가 확정되었습니다.</p><div className="overlay-actions">{me.isHost && <button className="primary-action" type="button" onClick={onRematch}>다시 대전 준비</button>}<Link className="secondary-action" to="/">Arcade 홈</Link></div></div> : snapshot.status === 'gameOver' && <div className="game-overlay" role="dialog" aria-label="내 플레이 종료"><p className="kicker">RUN COMPLETE</p><h2>내 플레이 종료</h2><p>다른 참가자의 최종 기록을 기다리는 중입니다.</p><Link className="secondary-action" to="/">Arcade 홈</Link></div>}
         </div>
         <GravityStackControls onCommand={command} status={snapshot.status} />
       </section>
@@ -125,5 +133,5 @@ function MultiplayerMatch({ room, me, match, sendProgress }: { room: Multiplayer
 
 function PlayerStandings({ players, currentPlayerId }: { players: MultiplayerPlayer[]; currentPlayerId?: string }) {
   const ordered = [...players].sort((a, b) => b.score - a.score || b.cleared - a.cleared || a.name.localeCompare(b.name))
-  return <ol className="player-standings">{ordered.map((player) => <li key={player.id} data-self={player.id === currentPlayerId}><span><strong>{player.name}</strong>{player.isHost && <small>HOST</small>}</span><span>{player.score.toLocaleString()}점 · Lv.{player.level}</span><em>{player.gameStatus === 'gameOver' ? 'OUT' : player.gameStatus === 'playing' ? 'PLAY' : player.ready ? 'READY' : 'WAIT'}</em></li>)}</ol>
+  return <ol className="player-standings">{ordered.map((player) => <li key={player.id} data-self={player.id === currentPlayerId} data-connected={player.connected}><span><strong>{player.name}</strong>{player.isHost && <small>HOST</small>}</span><span>{player.score.toLocaleString()}점 · Lv.{player.level}</span><em>{!player.connected ? 'OFFLINE' : player.gameStatus === 'gameOver' ? 'OUT' : player.gameStatus === 'playing' ? 'PLAY' : player.ready ? 'READY' : 'WAIT'}</em></li>)}</ol>
 }

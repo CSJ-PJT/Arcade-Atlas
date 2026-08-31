@@ -16,6 +16,7 @@ export default defineConfig({
       url: 'http://127.0.0.1:4188/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
+      env: { ...process.env, ARCADE_HEARTBEAT_MS: '1000' },
     },
     {
       command: 'npm run preview -- --host 127.0.0.1 --port 4173',
