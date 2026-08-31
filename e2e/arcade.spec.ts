@@ -72,6 +72,52 @@ test('a normal input sequence reaches game over and restart completes a full rou
   expect(runtime.failedRequests).toEqual([])
 })
 
+test('two browsers create, join, ready and start the same seeded match', async ({ browser }) => {
+  const hostContext = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' })
+  const guestContext = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' })
+  const host = await hostContext.newPage()
+  const guest = await guestContext.newPage()
+  const hostRuntime = observeRuntime(host)
+  const guestRuntime = observeRuntime(guest)
+
+  await host.goto('/arcade/stack/multi')
+  await expect(host.getByTestId('multiplayer-page')).toHaveAttribute('data-connection', 'open')
+  await host.getByLabel('표시 이름').fill('Host QA')
+  await host.getByRole('button', { name: '새 방 만들기' }).click()
+  await expect(host.getByTestId('multiplayer-lobby')).toBeVisible()
+  const roomCode = (await host.getByTestId('room-code').textContent())?.trim() ?? ''
+  expect(roomCode).toHaveLength(6)
+
+  await guest.goto('/arcade/stack/multi')
+  await expect(guest.getByTestId('multiplayer-page')).toHaveAttribute('data-connection', 'open')
+  await guest.getByLabel('표시 이름').fill('Guest QA')
+  await guest.getByLabel('방 코드').fill(roomCode)
+  await guest.getByRole('button', { name: '참가' }).click()
+  await expect(guest.getByTestId('multiplayer-lobby')).toContainText('Host QA')
+  await expect(host.getByTestId('multiplayer-lobby')).toContainText('Guest QA')
+
+  await host.getByRole('button', { name: '준비 완료' }).click()
+  await guest.getByRole('button', { name: '준비 완료' }).click()
+  await expect(host.getByRole('button', { name: '동시 시작' })).toBeEnabled()
+  await host.getByRole('button', { name: '동시 시작' }).click()
+  await expect(host.getByTestId('multiplayer-match')).toBeVisible()
+  await expect(guest.getByTestId('multiplayer-match')).toBeVisible()
+  await expect(host.getByTestId('multiplayer-match')).toHaveAttribute('data-game-status', 'playing', { timeout: 5000 })
+  await expect(guest.getByTestId('multiplayer-match')).toHaveAttribute('data-game-status', 'playing', { timeout: 5000 })
+
+  const hostSeed = await host.locator('.multiplayer-scoreboard .seed-readout code').textContent()
+  const guestSeed = await guest.locator('.multiplayer-scoreboard .seed-readout code').textContent()
+  expect(hostSeed).toBe(guestSeed)
+  await host.keyboard.press('Space')
+  await expect.poll(async () => host.getByTestId('multiplayer-match').getAttribute('data-game-status')).toBe('playing')
+  expect(hostRuntime.consoleErrors).toEqual([])
+  expect(guestRuntime.consoleErrors).toEqual([])
+  expect(hostRuntime.failedRequests).toEqual([])
+  expect(guestRuntime.failedRequests).toEqual([])
+  await hostContext.close()
+  await guestContext.close()
+})
+
 for (const viewport of [
   { width: 360, height: 800 },
   { width: 390, height: 844 },

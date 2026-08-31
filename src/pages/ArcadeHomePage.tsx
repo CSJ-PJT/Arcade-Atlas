@@ -35,7 +35,10 @@ export function ArcadeHomePage() {
               <div className="game-card__meta">
                 <span>{game.controls}</span>
                 {game.status === 'playable' && game.route ? (
-                  <Link className="primary-action" to={game.route}>Gravity Stack 플레이</Link>
+                  <div className="game-card__actions">
+                    <Link className="primary-action" to={game.route}>Gravity Stack 플레이</Link>
+                    <Link className="secondary-action" to="/stack/multi">실시간 대전</Link>
+                  </div>
                 ) : (
                   <span className="upcoming-badge" aria-disabled="true">준비 중</span>
                 )}

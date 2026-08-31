@@ -8,6 +8,11 @@ const GravityStackPage = lazy(async () => {
   return { default: module.GravityStackPage }
 })
 
+const MultiplayerGravityStackPage = lazy(async () => {
+  const module = await import('../games/gravity-stack/multiplayer/MultiplayerGravityStackPage')
+  return { default: module.MultiplayerGravityStackPage }
+})
+
 export function App() {
   return (
     <BrowserRouter basename="/arcade">
@@ -18,6 +23,14 @@ export function App() {
           element={(
             <Suspense fallback={<main className="route-loading" aria-live="polite">게임 모듈 연결 중…</main>}>
               <GravityStackPage />
+            </Suspense>
+          )}
+        />
+        <Route
+          path="/stack/multi"
+          element={(
+            <Suspense fallback={<main className="route-loading" aria-live="polite">실시간 대전 연결 중…</main>}>
+              <MultiplayerGravityStackPage />
             </Suspense>
           )}
         />

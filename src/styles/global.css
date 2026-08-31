@@ -58,6 +58,7 @@ body::before {
 .game-card h3 { margin: 32px 0 10px; font-size: 1.8rem; }
 .game-card > p:not(.kicker) { color: var(--muted); line-height: 1.65; }
 .game-card__meta { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 14px; color: var(--muted); font-size: 0.78rem; }
+.game-card__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .primary-action, .secondary-action, .pause-control { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; border-radius: 12px; padding: 0 18px; border: 1px solid transparent; text-decoration: none; font-weight: 800; cursor: pointer; }
 .primary-action { background: var(--cyan); color: #03121c; }
 .secondary-action { background: transparent; color: #e9f4ff; border-color: var(--line); }
@@ -74,6 +75,7 @@ body::before {
   .arcade-shell { width: min(100% - 20px, 1180px); padding-top: 14px; }
   .home-hero h1 { font-size: clamp(2.35rem, 14vw, 4rem); }
   .game-card__meta { align-items: stretch; flex-direction: column; }
+  .game-card__actions { flex-direction: column; }
   .primary-action { width: 100%; }
 }
 

@@ -10,6 +10,7 @@ describe('ArcadeHomePage', () => {
     render(<MemoryRouter><ArcadeHomePage /></MemoryRouter>)
     expect(screen.getByText('ARCADE ATLAS')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Gravity Stack 플레이' })).toHaveAttribute('href', '/stack')
+    expect(screen.getByRole('link', { name: '실시간 대전' })).toHaveAttribute('href', '/stack/multi')
     expect(screen.getByTestId('game-card-gravity-stack')).toBeInTheDocument()
   })
 

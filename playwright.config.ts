@@ -10,10 +10,18 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
-  webServer: {
-    command: 'npm run preview -- --host 127.0.0.1 --port 4173',
-    url: 'http://127.0.0.1:4173/arcade/',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'npm run server',
+      url: 'http://127.0.0.1:4188/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
+      command: 'npm run preview -- --host 127.0.0.1 --port 4173',
+      url: 'http://127.0.0.1:4173/arcade/',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+  ],
 })
