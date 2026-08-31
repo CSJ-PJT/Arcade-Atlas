@@ -7,16 +7,16 @@ export interface PieceShape {
 }
 
 export const PIECE_SHAPES: readonly PieceShape[] = [
-  { id: 'relay', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }] },
   { id: 'mast', points: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }] },
   { id: 'wing', points: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }] },
+  { id: 'relay', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }] },
+  { id: 'claw', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }] },
+  { id: 'probe', points: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 0 }] },
+  { id: 'vector', points: [{ x: 0, y: 1 }, { x: 1, y: 0 }, { x: 1, y: 1 }] },
   { id: 'pod', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }] },
   { id: 'kite', points: [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }] },
-  { id: 'cup', points: [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }] },
-  { id: 'beacon', points: [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 2, y: 1 }, { x: 1, y: 2 }] },
-  { id: 'hook', points: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 }, { x: 2, y: 2 }] },
-  { id: 'stair', points: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 1, y: 2 }, { x: 2, y: 2 }] },
-  { id: 'dish', points: [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }] },
+  { id: 'hook', points: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 1, y: 2 }] },
+  { id: 'stair', points: [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 1 }, { x: 1, y: 2 }] },
 ] as const
 
 export function normalizePieceCells(cells: PieceCell[]): PieceCell[] {
