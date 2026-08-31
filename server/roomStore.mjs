@@ -72,6 +72,7 @@ export class RoomStore {
     room.seed = `MULTI-${this.random(8).toString('hex')}`
     room.matchId = this.id()
     for (const player of room.players.values()) {
+      player.ready = false
       player.score = 0
       player.level = 1
       player.cleared = 0

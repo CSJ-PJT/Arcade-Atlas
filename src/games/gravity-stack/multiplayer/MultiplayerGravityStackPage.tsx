@@ -125,5 +125,5 @@ function MultiplayerMatch({ room, me, match, sendProgress }: { room: Multiplayer
 
 function PlayerStandings({ players, currentPlayerId }: { players: MultiplayerPlayer[]; currentPlayerId?: string }) {
   const ordered = [...players].sort((a, b) => b.score - a.score || b.cleared - a.cleared || a.name.localeCompare(b.name))
-  return <ol className="player-standings">{ordered.map((player) => <li key={player.id} data-self={player.id === currentPlayerId}><span><strong>{player.name}</strong>{player.isHost && <small>HOST</small>}</span><span>{player.score.toLocaleString()}점 · Lv.{player.level}</span><em>{player.ready || player.gameStatus === 'playing' ? 'READY' : 'WAIT'}</em></li>)}</ol>
+  return <ol className="player-standings">{ordered.map((player) => <li key={player.id} data-self={player.id === currentPlayerId}><span><strong>{player.name}</strong>{player.isHost && <small>HOST</small>}</span><span>{player.score.toLocaleString()}점 · Lv.{player.level}</span><em>{player.gameStatus === 'gameOver' ? 'OUT' : player.gameStatus === 'playing' ? 'PLAY' : player.ready ? 'READY' : 'WAIT'}</em></li>)}</ol>
 }

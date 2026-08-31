@@ -18,6 +18,7 @@ describe('multiplayer room store', () => {
     const match = store.start(host.room)
     expect(match.seed).toMatch(/^MULTI-/)
     expect(host.room.status).toBe('playing')
+    expect([...host.room.players.values()].every((player) => player.ready === false)).toBe(true)
   })
 
   it('limits a room to four real connections', () => {

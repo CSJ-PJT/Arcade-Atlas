@@ -104,6 +104,7 @@ test('two browsers create, join, ready and start the same seeded match', async (
   await expect(guest.getByTestId('multiplayer-match')).toBeVisible()
   await expect(host.getByTestId('multiplayer-match')).toHaveAttribute('data-game-status', 'playing', { timeout: 5000 })
   await expect(guest.getByTestId('multiplayer-match')).toHaveAttribute('data-game-status', 'playing', { timeout: 5000 })
+  await expect(host.locator('.player-standings')).toContainText('PLAY')
 
   const hostSeed = await host.locator('.multiplayer-scoreboard .seed-readout code').textContent()
   const guestSeed = await guest.locator('.multiplayer-scoreboard .seed-readout code').textContent()
