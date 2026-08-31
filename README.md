@@ -1,0 +1,56 @@
+# Arcade Atlas
+
+Arcade Atlas는 `/arcade/` 아래에서 실행되는 독립 브라우저 게임 허브입니다. 첫 번째 게임인 **Gravity Stack**은 12×18 에너지 보드에서 같은 에너지 셀을 연결해 연쇄 방전을 만드는 싱글플레이 게임입니다.
+
+현재 구현:
+
+- `/arcade/`: catalog 기반 게임 선택 홈
+- `/arcade/stack`: 실제 플레이 가능한 Gravity Stack
+- Orbit Snake, Core Breaker: 준비 중 카드만 제공
+
+## 기술 스택
+
+- React 19 + TypeScript
+- Vite (`base: "/arcade/"`)
+- Phaser 3
+- React Router (`basename="/arcade"`)
+- Vitest + Testing Library
+- Playwright Chromium
+
+Node.js 24와 npm 11에서 검증합니다. 최소한 Vite가 지원하는 Node.js 버전을 사용해야 합니다.
+
+## 로컬 실행
+
+```bash
+npm ci
+npm run dev
+```
+
+개발 서버의 `http://localhost:5173/arcade/`에서 시작합니다.
+
+## 검증
+
+```bash
+npm run typecheck
+npm run lint
+npm run test
+npm run build
+npm run test:e2e
+git diff --check
+```
+
+production build는 `dist/`에 생성되며 모든 자산 URL은 `/arcade/` 기준입니다.
+
+## 정적 배포 계약
+
+직접 `/arcade/stack`으로 진입하려면 정적 서버가 실제 파일을 먼저 찾고, 없으면 `/arcade/index.html`로 fallback해야 합니다. 예: `try_files $uri $uri/ /arcade/index.html`. 이 저장소는 nginx 설정을 포함하거나 운영 서버를 변경하지 않습니다.
+
+## 서비스 경계
+
+- Supabase, 인증, 서버 랭킹, 실시간 멀티플레이를 사용하지 않습니다.
+- P0-A에서는 외부 음원과 합성 오디오를 모두 생략했습니다.
+- 최고 점수는 `arcade:gravity-stack:best:v1` 키로 이 브라우저에만 저장됩니다.
+- Atlas Management 및 다른 Atlas 저장소와 독립적입니다.
+- 현재 운영에 배포되지 않았습니다.
+
+세부 구조는 [architecture](docs/architecture.md), 규칙은 [gravity-stack-rules](docs/gravity-stack-rules.md)를 참고하세요.
