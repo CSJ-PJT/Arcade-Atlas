@@ -9,8 +9,9 @@ describe('ArcadeHomePage', () => {
   it('renders the catalog and active Gravity Stack link', () => {
     render(<MemoryRouter><ArcadeHomePage /></MemoryRouter>)
     expect(screen.getByText('ARCADE ATLAS')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Gravity Stack 플레이' })).toHaveAttribute('href', '/stack')
-    expect(screen.getByRole('link', { name: '실시간 대전' })).toHaveAttribute('href', '/stack/multi')
+    expect(screen.getByRole('link', { name: /싱글 플레이/ })).toHaveAttribute('href', '/stack')
+    expect(screen.getByRole('link', { name: /멀티 플레이/ })).toHaveAttribute('href', '/stack/multi')
+    expect(screen.getByAltText('함께 비행하는 귀여운 에너지 탐사대')).toBeInTheDocument()
     expect(screen.getByTestId('game-card-gravity-stack')).toBeInTheDocument()
   })
 
@@ -24,6 +25,6 @@ describe('ArcadeHomePage', () => {
   it('shows the local best score as a device-local value', () => {
     localStorage.setItem('arcade:gravity-stack:best:v1', '420')
     render(<MemoryRouter><ArcadeHomePage /></MemoryRouter>)
-    expect(screen.getByText('420')).toBeInTheDocument()
+    expect(screen.getByText(/420/)).toBeInTheDocument()
   })
 })
