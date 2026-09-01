@@ -32,6 +32,30 @@ test('owned lobby and in-game music are served from separate playlists', async (
   expect(runtime.failedRequests).toEqual([])
 })
 
+test('right-top language switch translates and persists English and Japanese across routes', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 })
+  await page.goto('/arcade/')
+  const language = page.getByLabel('언어')
+  await language.selectOption('en')
+  await expect(page.getByRole('heading', { name: 'Game selection' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Live match' })).toBeVisible()
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  await page.getByRole('link', { name: 'Live match' }).click()
+  await expect(page.getByRole('heading', { name: 'Gravity Stack live match' })).toBeVisible()
+  await page.getByLabel('Language').selectOption('ja')
+  await expect(page.getByRole('heading', { name: 'Gravity Stack リアルタイム対戦' })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja')
+  const switcher = await page.locator('.language-switcher').boundingBox()
+  expect(switcher).not.toBeNull()
+  expect((switcher?.x ?? 0) + (switcher?.width ?? 0)).toBeLessThanOrEqual(360)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
+
+  await page.goto('/arcade/stack')
+  await expect(page.getByRole('button', { name: 'ゲーム開始' })).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja')
+})
+
 test('direct Arcade home and catalog navigation work', async ({ page }) => {
   const runtime = observeRuntime(page)
   await page.goto('/arcade/')

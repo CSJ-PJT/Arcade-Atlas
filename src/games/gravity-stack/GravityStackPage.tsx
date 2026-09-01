@@ -10,6 +10,7 @@ import { GravityStackResults } from './components/GravityStackResults'
 import { readBestScore, writeBestScore } from './localBest'
 import './gravity-stack.css'
 import { useMusicScope } from '../../audio/MusicProvider'
+import { useI18n } from '../../i18n/I18nProvider'
 
 function createSeed(): string {
   try {
@@ -21,15 +22,8 @@ function createSeed(): string {
   }
 }
 
-function statusMessage(snapshot: EngineSnapshot): string {
-  if (snapshot.status === 'ready') return 'Gravity Stack 준비 완료'
-  if (snapshot.status === 'paused') return '게임이 일시정지되었습니다.'
-  if (snapshot.status === 'gameOver') return `게임 오버. 최종 점수 ${snapshot.score}점`
-  if (snapshot.lastWaveCount > 0) return `${snapshot.lastWaveCount}연쇄 방전`
-  return `게임 진행 중. 레벨 ${snapshot.level}, 점수 ${snapshot.score}`
-}
-
 export function GravityStackPage() {
+  const { t } = useI18n()
   const engine = useMemo(() => new GravityStackEngine(createSeed()), [])
   const [snapshot, setSnapshot] = useState(() => engine.getSnapshot())
   const [bestScore, setBestScore] = useState(() => readBestScore())
@@ -68,7 +62,7 @@ export function GravityStackPage() {
     <main className="gravity-page" data-testid="gravity-stack-page" data-game-status={snapshot.status} data-active-x={snapshot.activePiece?.x ?? ''}>
       <header className="gravity-topbar">
         <AtlasBrand compact />
-        <Link className="text-link" to="/">미션 선택</Link>
+        <Link className="text-link" to="/">{t('common.missionSelect', '미션 선택')}</Link>
       </header>
 
       <div className="gravity-layout">
@@ -78,29 +72,29 @@ export function GravityStackPage() {
               <p className="kicker">ENERGY ARRAY 01</p>
               <h1 id="gravity-title">Gravity Stack</h1>
             </div>
-            <p>같은 에너지 6개를 상하좌우로 연결해 연쇄 방전을 만드세요.</p>
+            <p>{t('single.rule', '같은 에너지 6개를 상하좌우로 연결해 연쇄 방전을 만드세요.')}</p>
           </div>
 
           <GravityStackHud snapshot={snapshot} bestScore={bestScore} />
 
-          <div className="board-frame" tabIndex={0} aria-label="Gravity Stack 게임 보드. 방향키와 스페이스로 조작합니다.">
+          <div className="board-frame" tabIndex={0} aria-label={t('single.board', 'Gravity Stack 게임 보드. 방향키와 스페이스로 조작합니다.')}>
             <GravityStackCanvas engine={engine} onSnapshot={publish} />
             {snapshot.status === 'ready' && (
               <div className="game-overlay" role="dialog" aria-modal="true" aria-labelledby="ready-title">
                 <p className="kicker">CONTROL LINK READY</p>
-                <h2 id="ready-title">에너지 배열을 시작할까요?</h2>
-                <p>방향키 또는 아래의 터치 패널로 조작할 수 있습니다.</p>
-                <button ref={readyButtonRef} className="primary-action" type="button" onClick={() => command('start')}>게임 시작</button>
+                <h2 id="ready-title">{t('single.readyTitle', '에너지 배열을 시작할까요?')}</h2>
+                <p>{t('single.readyHelp', '방향키 또는 아래의 터치 패널로 조작할 수 있습니다.')}</p>
+                <button ref={readyButtonRef} className="primary-action" type="button" onClick={() => command('start')}>{t('single.start', '게임 시작')}</button>
               </div>
             )}
             {snapshot.status === 'paused' && (
               <div className="game-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
                 <p className="kicker">ARRAY HOLD</p>
-                <h2 id="pause-title">일시정지</h2>
-                <p>자동으로 재개하지 않습니다. 준비되면 직접 계속하세요.</p>
+                <h2 id="pause-title">{t('single.pauseTitle', '일시정지')}</h2>
+                <p>{t('single.pauseHelp', '자동으로 재개하지 않습니다. 준비되면 직접 계속하세요.')}</p>
                 <div className="overlay-actions">
-                  <button ref={pauseButtonRef} className="primary-action" type="button" onClick={() => command('pauseToggle')}>계속하기</button>
-                  <button className="secondary-action" type="button" onClick={restart}>다시 시작</button>
+                  <button ref={pauseButtonRef} className="primary-action" type="button" onClick={() => command('pauseToggle')}>{t('common.resume', '계속하기')}</button>
+                  <button className="secondary-action" type="button" onClick={restart}>{t('common.restart', '다시 시작')}</button>
                 </div>
               </div>
             )}
@@ -108,33 +102,33 @@ export function GravityStackPage() {
           </div>
 
           <GravityStackControls onCommand={command} status={snapshot.status} />
-          <div className="screen-reader-status" aria-live="polite" aria-atomic="true">{statusMessage(snapshot)}</div>
+          <div className="screen-reader-status" aria-live="polite" aria-atomic="true">{snapshot.status === 'ready' ? t('single.readyStatus', 'Gravity Stack 준비 완료') : snapshot.status === 'paused' ? t('single.pausedStatus', '게임이 일시정지되었습니다.') : snapshot.status === 'gameOver' ? t('single.gameOverStatus', `게임 오버. 최종 점수 ${snapshot.score}점`, { score: snapshot.score }) : snapshot.lastWaveCount > 0 ? t('single.chainStatus', `${snapshot.lastWaveCount}연쇄 방전`, { chain: snapshot.lastWaveCount }) : t('single.playingStatus', `게임 진행 중. 레벨 ${snapshot.level}, 점수 ${snapshot.score}`, { level: snapshot.level, score: snapshot.score })}</div>
         </section>
 
-        <aside className="gravity-briefing" aria-label="Gravity Stack 조작 및 상태">
+        <aside className="gravity-briefing" aria-label={t('single.briefing', 'Gravity Stack 조작 및 상태')}>
           <section>
             <p className="kicker">CONTROL MAP</p>
-            <h2>조작</h2>
+            <h2>{t('single.controls', '조작')}</h2>
             <dl className="key-map">
-              <div><dt>← →</dt><dd>좌우 이동</dd></div>
-              <div><dt>↑</dt><dd>회전</dd></div>
-              <div><dt>↓</dt><dd>한 칸 낙하</dd></div>
-              <div><dt>SPACE</dt><dd>즉시 낙하</dd></div>
-              <div><dt>P / ESC</dt><dd>일시정지</dd></div>
-              <div><dt>R</dt><dd>정지 상태에서 재시작</dd></div>
+              <div><dt>← →</dt><dd>{t('single.moveHorizontal', '좌우 이동')}</dd></div>
+              <div><dt>↑</dt><dd>{t('single.rotate', '회전')}</dd></div>
+              <div><dt>↓</dt><dd>{t('single.softDrop', '한 칸 낙하')}</dd></div>
+              <div><dt>SPACE</dt><dd>{t('single.hardDrop', '즉시 낙하')}</dd></div>
+              <div><dt>P / ESC</dt><dd>{t('single.pause', '일시정지')}</dd></div>
+              <div><dt>R</dt><dd>{t('single.restartPaused', '정지 상태에서 재시작')}</dd></div>
             </dl>
           </section>
           <section>
             <p className="kicker">MISSION DATA</p>
             <dl className="mission-data">
-              <div><dt>제거 셀</dt><dd>{snapshot.totalClearedCells}</dd></div>
-              <div><dt>최대 연쇄</dt><dd>{snapshot.maxChain}</dd></div>
-              <div><dt>낙하 간격</dt><dd>{snapshot.dropIntervalMs} ms</dd></div>
-              <div><dt>상태</dt><dd>{snapshot.status}</dd></div>
+              <div><dt>{t('single.cleared', '제거 셀')}</dt><dd>{snapshot.totalClearedCells}</dd></div>
+              <div><dt>{t('single.maxChain', '최대 연쇄')}</dt><dd>{snapshot.maxChain}</dd></div>
+              <div><dt>{t('single.dropInterval', '낙하 간격')}</dt><dd>{snapshot.dropIntervalMs} ms</dd></div>
+              <div><dt>{t('single.status', '상태')}</dt><dd>{snapshot.status}</dd></div>
             </dl>
           </section>
           <button className="pause-control" type="button" onClick={() => command('pauseToggle')} disabled={snapshot.status === 'ready' || snapshot.status === 'gameOver'}>
-            {snapshot.status === 'paused' ? '계속하기' : '일시정지'}
+            {snapshot.status === 'paused' ? t('common.resume', '계속하기') : t('single.pause', '일시정지')}
           </button>
           <p className="seed-readout">PLAY SEED <code>{snapshot.seed}</code></p>
         </aside>

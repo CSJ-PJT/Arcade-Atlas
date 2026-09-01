@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EngineCheckpoint, GameCommand } from '../core/types'
 import type { BotDifficulty, ItemEvent, ItemType, MatchStart, MultiplayerMode, MultiplayerRoom } from './types'
+import { useI18n } from '../../../i18n/I18nProvider'
 
 const PROTOCOL_VERSION = 2
 const SESSION_KEY = 'arcade:gravity-stack:multiplayer-session:v1'
@@ -30,6 +31,9 @@ function readCredentials(): ReconnectCredentials | null {
 }
 
 export function useMultiplayerRoom() {
+  const { t } = useI18n()
+  const tRef = useRef(t)
+  useEffect(() => { tRef.current = t }, [t])
   const socketRef = useRef<WebSocket | null>(null)
   const [initialCredentials] = useState<ReconnectCredentials | null>(readCredentials)
   const credentialsRef = useRef<ReconnectCredentials | null>(initialCredentials)
@@ -70,7 +74,7 @@ export function useMultiplayerRoom() {
         retryTimerRef.current = window.setTimeout(connect, delay)
       })
       socket.addEventListener('error', () => {
-        if (!credentialsRef.current) setError('실시간 서버에 연결하지 못했습니다. 자동으로 다시 시도합니다.')
+        if (!credentialsRef.current) setError(tRef.current('error.connect', '실시간 서버에 연결하지 못했습니다. 자동으로 다시 시도합니다.'))
       })
       socket.addEventListener('message', (event) => {
         let message: { type?: string; [key: string]: unknown }
@@ -117,7 +121,7 @@ export function useMultiplayerRoom() {
             setMatch(null)
             setAuthoritativeState(null)
           }
-          setError(errorMessage(code))
+          setError(errorMessage(code, tRef.current))
         }
       })
     }
@@ -134,12 +138,12 @@ export function useMultiplayerRoom() {
   const send = useCallback((message: ClientMessage) => {
     const socket = socketRef.current
     if (socket?.readyState !== WebSocket.OPEN) {
-      setError('연결 복구 중입니다. 잠시 후 자동으로 동기화됩니다.')
+      setError(t('error.recovering', '연결 복구 중입니다. 잠시 후 자동으로 동기화됩니다.'))
       return false
     }
     socket.send(JSON.stringify({ protocol: PROTOCOL_VERSION, ...message }))
     return true
-  }, [])
+  }, [t])
 
   const createRoom = useCallback((name: string, mode: MultiplayerMode) => send({ type: 'create', name, mode }), [send])
   const joinRoom = useCallback((code: string, name: string) => send({ type: 'join', code, name }), [send])
@@ -161,7 +165,7 @@ export function useMultiplayerRoom() {
   return { connection, room, playerId, match, itemEvent, authoritativeState, error, createRoom, joinRoom, setReady, startMatch, rematch, addBot, removeBot, useItem, sendInput, forfeit }
 }
 
-function errorMessage(code: string): string {
+function errorMessage(code: string, t: (key: string, fallback: string) => string): string {
   const messages: Record<string, string> = {
     ROOM_NOT_FOUND: '방 코드를 확인해 주세요.',
     ROOM_FULL: '방 인원이 가득 찼습니다.',
@@ -178,5 +182,5 @@ function errorMessage(code: string): string {
     ROOM_CREATION_LIMITED: '짧은 시간에 방을 너무 많이 만들었습니다. 잠시 후 다시 시도해 주세요.',
     BOT_CAPACITY_REACHED: '현재 AI 플레이어 수용량이 가득 찼습니다.',
   }
-  return messages[code] ?? '요청을 처리하지 못했습니다.'
+  return t(`error.${code}`, messages[code] ?? '요청을 처리하지 못했습니다.')
 }

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsWithChildren } from 'react'
+import { useI18n } from '../i18n/I18nProvider'
 
 export type MusicScope = 'lobby' | 'game'
 
@@ -29,6 +30,7 @@ function nextGameTrack(previous: string): string {
 }
 
 export function MusicProvider({ children }: PropsWithChildren) {
+  const { t } = useI18n()
   const lobbyAudioRef = useRef<HTMLAudioElement | null>(null)
   const gameAudioRef = useRef<HTMLAudioElement | null>(null)
   const scopeRef = useRef<MusicScope>('lobby')
@@ -133,7 +135,7 @@ export function MusicProvider({ children }: PropsWithChildren) {
   }
 
   const value = useMemo(() => ({ setScope }), [setScope])
-  const buttonLabel = !activated ? '음악 시작' : muted ? '음악 켜기' : '음악 끄기'
+  const buttonLabel = !activated ? t('music.start', '음악 시작') : muted ? t('music.on', '음악 켜기') : t('music.off', '음악 끄기')
 
   return (
     <MusicContext.Provider value={value}>

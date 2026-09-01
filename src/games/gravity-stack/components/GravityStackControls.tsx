@@ -1,20 +1,22 @@
 import { useEffect, useRef } from 'react'
 import type { GameCommand, GameStatus } from '../core/types'
+import { useI18n } from '../../../i18n/I18nProvider'
 
 interface ControlSpec {
   command: GameCommand
-  label: string
+  labelKey: string
+  fallback: string
   glyph: string
   repeat?: boolean
 }
 
 const controls: readonly ControlSpec[] = [
-  { command: 'left', label: '왼쪽 이동', glyph: '←', repeat: true },
-  { command: 'rotate', label: '시계 방향 회전', glyph: '↻' },
-  { command: 'right', label: '오른쪽 이동', glyph: '→', repeat: true },
-  { command: 'down', label: '한 칸 아래', glyph: '↓', repeat: true },
-  { command: 'hardDrop', label: '즉시 낙하', glyph: '⇊' },
-  { command: 'pauseToggle', label: '일시정지 또는 계속', glyph: 'Ⅱ' },
+  { command: 'left', labelKey: 'controls.left', fallback: '왼쪽 이동', glyph: '←', repeat: true },
+  { command: 'rotate', labelKey: 'controls.rotate', fallback: '시계 방향 회전', glyph: '↻' },
+  { command: 'right', labelKey: 'controls.right', fallback: '오른쪽 이동', glyph: '→', repeat: true },
+  { command: 'down', labelKey: 'controls.down', fallback: '한 칸 아래', glyph: '↓', repeat: true },
+  { command: 'hardDrop', labelKey: 'controls.hardDrop', fallback: '즉시 낙하', glyph: '⇊' },
+  { command: 'pauseToggle', labelKey: 'controls.pause', fallback: '일시정지 또는 계속', glyph: 'Ⅱ' },
 ]
 
 function isUnavailable(control: ControlSpec, status: GameStatus): boolean {
@@ -30,6 +32,7 @@ interface GravityStackControlsProps {
 }
 
 export function GravityStackControls({ onCommand, status, allowPause = true }: GravityStackControlsProps) {
+  const { t } = useI18n()
   const timers = useRef<{ delay?: number; interval?: number }>({})
 
   const stopRepeat = () => {
@@ -54,14 +57,14 @@ export function GravityStackControls({ onCommand, status, allowPause = true }: G
   }
 
   return (
-    <div className="touch-controls" aria-label="모바일 게임 조작">
+    <div className="touch-controls" aria-label={t('controls.mobile', '모바일 게임 조작')}>
       {controls.filter((control) => allowPause || control.command !== 'pauseToggle').map((control) => {
         const unavailable = isUnavailable(control, status)
         return (
         <button
           type="button"
           key={control.command}
-          aria-label={control.label}
+          aria-label={t(control.labelKey, control.fallback)}
           data-testid={`control-${control.command}`}
           disabled={unavailable}
           onPointerDown={(event) => begin(event, control)}

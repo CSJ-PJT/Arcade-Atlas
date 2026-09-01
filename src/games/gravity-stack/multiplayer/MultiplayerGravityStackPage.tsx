@@ -10,10 +10,12 @@ import { useMultiplayerRoom } from './useMultiplayerRoom'
 import type { MatchStart, MultiplayerPlayer, MultiplayerRoom } from './types'
 import type { BotDifficulty, ItemEvent, MultiplayerMode } from './types'
 import { useMusicScope } from '../../../audio/MusicProvider'
+import { useI18n } from '../../../i18n/I18nProvider'
 import '../gravity-stack.css'
 import './multiplayer.css'
 
 export function MultiplayerGravityStackPage() {
+  const { t } = useI18n()
   const multiplayer = useMultiplayerRoom()
   const [name, setName] = useState(() => sessionStorage.getItem('arcade:player-name') || '')
   const [code, setCode] = useState('')
@@ -32,27 +34,27 @@ export function MultiplayerGravityStackPage() {
     <main className="multiplayer-page" data-testid="multiplayer-page" data-connection={multiplayer.connection}>
       <header className="gravity-topbar">
         <AtlasBrand compact />
-        <Link className="text-link" to="/">미션 선택</Link>
+        <Link className="text-link" to="/">{t('common.missionSelect', '미션 선택')}</Link>
       </header>
-      {multiplayer.connection === 'reconnecting' && <p className="reconnect-banner" role="status">연결이 잠시 끊겼습니다. 방을 유지한 채 자동 복구 중입니다.</p>}
+      {multiplayer.connection === 'reconnecting' && <p className="reconnect-banner" role="status">{t('multi.reconnecting', '연결이 잠시 끊겼습니다. 방을 유지한 채 자동 복구 중입니다.')}</p>}
       {!multiplayer.room && multiplayer.playerId && (
-        <section className="multiplayer-entry reconnect-panel" aria-live="polite"><p className="kicker">LINK RECOVERY</p><h1>이전 방으로 복귀 중</h1><p>30초 안에 연결이 돌아오면 진행 상태를 그대로 이어갑니다.</p></section>
+        <section className="multiplayer-entry reconnect-panel" aria-live="polite"><p className="kicker">LINK RECOVERY</p><h1>{t('multi.recoveryTitle', '이전 방으로 복귀 중')}</h1><p>{t('multi.recoveryHelp', '30초 안에 연결이 돌아오면 진행 상태를 그대로 이어갑니다.')}</p></section>
       )}
       {!multiplayer.room && !multiplayer.playerId && (
         <section className="multiplayer-entry" aria-labelledby="multi-title">
           <p className="kicker">LIVE ENERGY RACE</p>
-          <h1 id="multi-title">Gravity Stack 실시간 대전</h1>
-          <p>2~4명이 같은 seed로 동시에 시작합니다. 조작은 서버 공통 엔진이 판정하며, 각자 보드에서 더 높은 점수를 만드세요.</p>
-          <label>표시 이름<input value={name} maxLength={16} autoComplete="nickname" onChange={(event) => setName(event.target.value)} /></label>
-          <fieldset className="mode-selector"><legend>게임 모드</legend><label><input type="radio" name="mode" value="normal" checked={mode === 'normal'} onChange={() => setMode('normal')} /><span><strong>일반 모드</strong>같은 조건으로 순수 점수 대결</span></label><label><input type="radio" name="mode" value="items" checked={mode === 'items'} onChange={() => setMode('items')} /><span><strong>아이템 모드</strong>방전으로 방어막과 중력 펄스 획득</span></label></fieldset>
+          <h1 id="multi-title">{t('multi.title', 'Gravity Stack 실시간 대전')}</h1>
+          <p>{t('multi.description', '2~4명이 같은 seed로 동시에 시작합니다. 조작은 서버 공통 엔진이 판정하며, 각자 보드에서 더 높은 점수를 만드세요.')}</p>
+          <label>{t('multi.name', '표시 이름')}<input value={name} maxLength={16} autoComplete="nickname" onChange={(event) => setName(event.target.value)} /></label>
+          <fieldset className="mode-selector"><legend>{t('multi.mode', '게임 모드')}</legend><label><input type="radio" name="mode" value="normal" checked={mode === 'normal'} onChange={() => setMode('normal')} /><span><strong>{t('multi.normal', '일반 모드')}</strong>{t('multi.normalHelp', '같은 조건으로 순수 점수 대결')}</span></label><label><input type="radio" name="mode" value="items" checked={mode === 'items'} onChange={() => setMode('items')} /><span><strong>{t('multi.items', '아이템 모드')}</strong>{t('multi.itemsHelp', '방전으로 방어막과 중력 펄스 획득')}</span></label></fieldset>
           <div className="multiplayer-entry__actions">
-            <button className="primary-action" type="button" disabled={multiplayer.connection !== 'open' || !name.trim()} onClick={() => rememberName() && multiplayer.createRoom(name, mode)}>새 방 만들기</button>
+            <button className="primary-action" type="button" disabled={multiplayer.connection !== 'open' || !name.trim()} onClick={() => rememberName() && multiplayer.createRoom(name, mode)}>{t('multi.create', '새 방 만들기')}</button>
             <div className="join-controls">
-              <label>방 코드<input value={code} maxLength={6} autoCapitalize="characters" onChange={(event) => setCode(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ''))} /></label>
-              <button className="secondary-action" type="button" disabled={multiplayer.connection !== 'open' || !name.trim() || code.length !== 6} onClick={() => rememberName() && multiplayer.joinRoom(code, name)}>참가</button>
+              <label>{t('multi.code', '방 코드')}<input value={code} maxLength={6} autoCapitalize="characters" onChange={(event) => setCode(event.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ''))} /></label>
+              <button className="secondary-action" type="button" disabled={multiplayer.connection !== 'open' || !name.trim() || code.length !== 6} onClick={() => rememberName() && multiplayer.joinRoom(code, name)}>{t('multi.join', '참가')}</button>
             </div>
           </div>
-          <p className="connection-note" aria-live="polite">실시간 연결: {multiplayer.connection}</p>
+          <p className="connection-note" aria-live="polite">{t('multi.connection', `실시간 연결: ${multiplayer.connection}`, { state: multiplayer.connection })}</p>
           {multiplayer.error && <p className="form-error" role="alert">{multiplayer.error}</p>}
         </section>
       )}
@@ -67,19 +69,20 @@ export function MultiplayerGravityStackPage() {
 }
 
 function MultiplayerLobby({ room, me, error, onReady, onStart, onAddBot, onRemoveBot }: { room: MultiplayerRoom; me: MultiplayerPlayer; error: string; onReady: (ready: boolean) => boolean; onStart: () => boolean; onAddBot: (difficulty: BotDifficulty) => boolean; onRemoveBot: (id: string) => boolean }) {
+  const { t } = useI18n()
   const [difficulty, setDifficulty] = useState<BotDifficulty>('pilot')
   const allReady = room.players.length >= 2 && room.players.every((player) => player.connected && player.ready)
   return (
     <section className="multiplayer-lobby" data-testid="multiplayer-lobby">
       <p className="kicker">ROOM LINK</p>
-      <h1>방 코드 <strong data-testid="room-code">{room.code}</strong></h1>
-      <p className="mode-badge">{room.mode === 'items' ? '아이템 모드' : '일반 모드'}</p>
-      <p>코드를 함께 플레이할 사람에게 전달하세요. 최대 4명까지 참가할 수 있습니다.</p>
+      <h1>{t('multi.code', '방 코드')} <strong data-testid="room-code">{room.code}</strong></h1>
+      <p className="mode-badge">{room.mode === 'items' ? t('multi.items', '아이템 모드') : t('multi.normal', '일반 모드')}</p>
+      <p>{t('multi.invite', '코드를 함께 플레이할 사람에게 전달하세요. 최대 4명까지 참가할 수 있습니다.')}</p>
       <PlayerStandings players={room.players} onRemoveBot={me.isHost ? onRemoveBot : undefined} />
-      {me.isHost && <div className="bot-controls"><label>AI 난이도<select value={difficulty} onChange={(event) => setDifficulty(event.target.value as BotDifficulty)}><option value="rookie">루키 · 여유롭게</option><option value="pilot">파일럿 · 균형</option><option value="ace">에이스 · 빠르게</option></select></label><button className="secondary-action" type="button" disabled={room.players.length >= 4} onClick={() => onAddBot(difficulty)}>Atlas AI 추가</button></div>}
+      {me.isHost && <div className="bot-controls"><label>{t('multi.aiDifficulty', 'AI 난이도')}<select value={difficulty} onChange={(event) => setDifficulty(event.target.value as BotDifficulty)}><option value="rookie">{t('multi.rookie', '루키 · 여유롭게')}</option><option value="pilot">{t('multi.pilot', '파일럿 · 균형')}</option><option value="ace">{t('multi.ace', '에이스 · 빠르게')}</option></select></label><button className="secondary-action" type="button" disabled={room.players.length >= 4} onClick={() => onAddBot(difficulty)}>{t('multi.addAi', 'Atlas AI 추가')}</button></div>}
       <div className="lobby-actions">
-        <button className={me.ready ? 'secondary-action' : 'primary-action'} type="button" onClick={() => onReady(!me.ready)}>{me.ready ? '준비 취소' : '준비 완료'}</button>
-        {me.isHost && <button className="primary-action" type="button" disabled={!allReady} onClick={onStart}>동시 시작</button>}
+        <button className={me.ready ? 'secondary-action' : 'primary-action'} type="button" onClick={() => onReady(!me.ready)}>{me.ready ? t('multi.cancelReady', '준비 취소') : t('multi.ready', '준비 완료')}</button>
+        {me.isHost && <button className="primary-action" type="button" disabled={!allReady} onClick={onStart}>{t('multi.startTogether', '동시 시작')}</button>}
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}
     </section>
@@ -87,6 +90,7 @@ function MultiplayerLobby({ room, me, error, onReady, onStart, onAddBot, onRemov
 }
 
 function MultiplayerMatch({ room, me, match, itemEvent, authoritativeState, onUseItem, sendInput, onForfeit, onRematch }: { room: MultiplayerRoom; me: MultiplayerPlayer; match: MatchStart; itemEvent: ItemEvent | null; authoritativeState: import('../core/types').EngineCheckpoint | null; onUseItem: (item: 'pulse' | 'shield', targetId?: string) => boolean; sendInput: (command: GameCommand) => boolean; onForfeit: () => boolean; onRematch: () => boolean }) {
+  const { t, locale } = useI18n()
   const engine = useMemo(() => new GravityStackEngine(match.seed), [match.seed])
   const [snapshot, setSnapshot] = useState(() => engine.getSnapshot())
   const itemEventRef = useRef('')
@@ -116,20 +120,20 @@ function MultiplayerMatch({ room, me, match, itemEvent, authoritativeState, onUs
   return (
     <div className="multiplayer-match" data-testid="multiplayer-match" data-game-status={snapshot.status} data-score={snapshot.score} data-revision={snapshot.revision} data-board-signature={boardSignature} data-active-piece={snapshot.activePiece?.id ?? ''} data-next-piece={snapshot.nextPiece.id}>
       <section className="gravity-stage">
-        <div className="gravity-stage__heading"><div><p className="kicker">ROOM {room.code}</p><h1>실시간 에너지 대전</h1></div><p>모든 참가자가 같은 seed로 시작했습니다.</p></div>
+        <div className="gravity-stage__heading"><div><p className="kicker">ROOM {room.code}</p><h1>{t('multi.matchTitle', '실시간 에너지 대전')}</h1></div><p>{t('multi.sameSeed', '모든 참가자가 같은 seed로 시작했습니다.')}</p></div>
         <GravityStackHud snapshot={snapshot} bestScore={0} />
-        <div className="board-frame" tabIndex={0} aria-label="멀티플레이 Gravity Stack 게임 보드">
+        <div className="board-frame" tabIndex={0} aria-label={t('multi.board', '멀티플레이 Gravity Stack 게임 보드')}>
           <GravityStackCanvas engine={engine} onSnapshot={publish} simulationEnabled={false} onCommand={command} />
-          {snapshot.status === 'ready' && <div className="game-overlay"><p className="kicker">SYNC COUNTDOWN</p><h2>동시 시작 준비 중</h2></div>}
-          {room.status === 'finished' ? <div className="game-overlay" role="dialog" aria-label="대전 종료"><p className="kicker">MATCH COMPLETE</p><h2>대전 종료</h2><p>MVP {winner.name} · {winner.score.toLocaleString()}점 · {winner.cleared}셀 · 최대 {winner.maxChain}연쇄</p><div className="overlay-actions">{me.isHost && <button className="primary-action" type="button" onClick={onRematch}>다시 대전 준비</button>}<Link className="secondary-action" to="/">Arcade 홈</Link></div></div> : snapshot.status === 'gameOver' && <div className="game-overlay" role="dialog" aria-label="내 플레이 종료"><p className="kicker">RUN COMPLETE</p><h2>{me.forfeited ? '대전 기권' : '내 플레이 종료'}</h2><p>다른 참가자의 최종 기록을 기다리는 중입니다.</p><Link className="secondary-action" to="/">Arcade 홈</Link></div>}
+          {snapshot.status === 'ready' && <div className="game-overlay"><p className="kicker">SYNC COUNTDOWN</p><h2>{t('multi.sync', '동시 시작 준비 중')}</h2></div>}
+          {room.status === 'finished' ? <div className="game-overlay" role="dialog" aria-label={t('multi.finished', '대전 종료')}><p className="kicker">MATCH COMPLETE</p><h2>{t('multi.finished', '대전 종료')}</h2><p>{t('multi.mvp', `MVP ${winner.name} · ${winner.score.toLocaleString(locale)}점 · ${winner.cleared}셀 · 최대 ${winner.maxChain}연쇄`, { name: winner.name, score: winner.score.toLocaleString(locale), cleared: winner.cleared, chain: winner.maxChain })}</p><div className="overlay-actions">{me.isHost && <button className="primary-action" type="button" onClick={onRematch}>{t('multi.rematch', '다시 대전 준비')}</button>}<Link className="secondary-action" to="/">{t('common.arcadeHome', 'Arcade 홈')}</Link></div></div> : snapshot.status === 'gameOver' && <div className="game-overlay" role="dialog" aria-label={t('multi.myFinished', '내 플레이 종료')}><p className="kicker">RUN COMPLETE</p><h2>{me.forfeited ? t('multi.forfeited', '대전 기권') : t('multi.myFinished', '내 플레이 종료')}</h2><p>{t('multi.waiting', '다른 참가자의 최종 기록을 기다리는 중입니다.')}</p><Link className="secondary-action" to="/">{t('common.arcadeHome', 'Arcade 홈')}</Link></div>}
         </div>
         <GravityStackControls onCommand={command} status={snapshot.status} allowPause={false} />
-        {room.status === 'playing' && snapshot.status === 'playing' && <button className="secondary-action" type="button" onClick={onForfeit}>대전 포기</button>}
+        {room.status === 'playing' && snapshot.status === 'playing' && <button className="secondary-action" type="button" onClick={onForfeit}>{t('multi.forfeit', '대전 포기')}</button>}
       </section>
-      <aside className="multiplayer-scoreboard" aria-label="실시간 순위">
-        <p className="kicker">LIVE STANDINGS</p><h2>실시간 순위</h2>
+      <aside className="multiplayer-scoreboard" aria-label={t('multi.standings', '실시간 순위')}>
+        <p className="kicker">LIVE STANDINGS</p><h2>{t('multi.standings', '실시간 순위')}</h2>
         <PlayerStandings players={room.players} currentPlayerId={me.id} />
-        {room.mode === 'items' && <section className="item-panel" aria-label="아이템"><h3>아이템</h3><p>각 플레이어가 12셀 방전마다 펄스와 방어막을 번갈아 획득합니다.</p><button type="button" disabled={me.items.shield < 1 || me.shielded} onClick={() => onUseItem('shield')}>방어막 × {me.items.shield}</button><button type="button" disabled={me.items.pulse < 1 || !target} onClick={() => onUseItem('pulse', target?.id)}>중력 펄스 × {me.items.pulse}</button>{me.shielded && <strong>방어막 활성</strong>}</section>}
+        {room.mode === 'items' && <section className="item-panel" aria-label={t('multi.item', '아이템')}><h3>{t('multi.item', '아이템')}</h3><p>{t('multi.itemHelp', '각 플레이어가 12셀 방전마다 펄스와 방어막을 번갈아 획득합니다.')}</p><button type="button" disabled={me.items.shield < 1 || me.shielded} onClick={() => onUseItem('shield')}>{t('multi.shield', `방어막 × ${me.items.shield}`, { count: me.items.shield })}</button><button type="button" disabled={me.items.pulse < 1 || !target} onClick={() => onUseItem('pulse', target?.id)}>{t('multi.pulse', `중력 펄스 × ${me.items.pulse}`, { count: me.items.pulse })}</button>{me.shielded && <strong>{t('multi.shieldActive', '방어막 활성')}</strong>}</section>}
         <p className="seed-readout">MATCH SEED <code>{match.seed}</code></p>
       </aside>
     </div>
@@ -137,8 +141,9 @@ function MultiplayerMatch({ room, me, match, itemEvent, authoritativeState, onUs
 }
 
 function PlayerStandings({ players, currentPlayerId, onRemoveBot }: { players: MultiplayerPlayer[]; currentPlayerId?: string; onRemoveBot?: (id: string) => boolean }) {
+  const { t, locale } = useI18n()
   const ordered = [...players].sort((a, b) => b.score - a.score || b.cleared - a.cleared || a.name.localeCompare(b.name))
-  return <ol className="player-standings">{ordered.map((player) => <li key={player.id} data-self={player.id === currentPlayerId} data-connected={player.connected} data-bot={player.isBot} data-bot-moves={player.botMoves ?? undefined}><span><strong>{player.name}</strong>{player.isHost && <small>HOST</small>}{player.isBot && <small>AI · {difficultyLabel(player.botDifficulty)}</small>}</span><span>{player.score.toLocaleString()}점 · Lv.{player.level} · {player.cleared}셀</span>{player.boardPreview && <span className="opponent-mini" role="img" aria-label={`${player.name} 보드 위험도 ${player.dangerHeight}/18, 최근 ${player.lastWaveCount}연쇄`} style={{ '--danger': `${Math.min(100, player.dangerHeight / 18 * 100)}%` } as React.CSSProperties}><i />{player.lastWaveCount > 1 && <b>{player.lastWaveCount} CHAIN</b>}</span>}<em>{!player.connected ? 'OFFLINE' : player.forfeited ? 'FORFEIT' : player.gameStatus === 'gameOver' ? 'OUT' : player.gameStatus === 'playing' ? 'PLAY' : player.ready ? 'READY' : 'WAIT'}</em>{player.isBot && onRemoveBot && <button className="bot-remove" type="button" aria-label={`${player.name} 제거`} onClick={() => onRemoveBot(player.id)}>제거</button>}</li>)}</ol>
+  return <ol className="player-standings">{ordered.map((player) => <li key={player.id} data-self={player.id === currentPlayerId} data-connected={player.connected} data-bot={player.isBot} data-bot-moves={player.botMoves ?? undefined}><span><strong>{player.name}</strong>{player.isHost && <small>HOST</small>}{player.isBot && <small>AI · {difficultyLabel(player.botDifficulty, t)}</small>}</span><span>{t('multi.points', `${player.score.toLocaleString(locale)}점 · Lv.${player.level} · ${player.cleared}셀`, { score: player.score.toLocaleString(locale), level: player.level, cleared: player.cleared })}</span>{player.boardPreview && <span className="opponent-mini" role="img" aria-label={t('multi.danger', `${player.name} 보드 위험도 ${player.dangerHeight}/18, 최근 ${player.lastWaveCount}연쇄`, { name: player.name, danger: player.dangerHeight, chain: player.lastWaveCount })} style={{ '--danger': `${Math.min(100, player.dangerHeight / 18 * 100)}%` } as React.CSSProperties}><i />{player.lastWaveCount > 1 && <b>{player.lastWaveCount} CHAIN</b>}</span>}<em>{!player.connected ? 'OFFLINE' : player.forfeited ? 'FORFEIT' : player.gameStatus === 'gameOver' ? 'OUT' : player.gameStatus === 'playing' ? 'PLAY' : player.ready ? 'READY' : 'WAIT'}</em>{player.isBot && onRemoveBot && <button className="bot-remove" type="button" aria-label={t('multi.removeAi', `${player.name} 제거`, { name: player.name })} onClick={() => onRemoveBot(player.id)}>×</button>}</li>)}</ol>
 }
 
-function difficultyLabel(value: BotDifficulty | null) { return value === 'rookie' ? '루키' : value === 'ace' ? '에이스' : '파일럿' }
+function difficultyLabel(value: BotDifficulty | null, t: (key: string, fallback: string) => string) { return value === 'rookie' ? t('multi.rookie', '루키') : value === 'ace' ? t('multi.ace', '에이스') : t('multi.pilot', '파일럿') }
