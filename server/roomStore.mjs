@@ -154,7 +154,10 @@ export class RoomStore {
     const level = Number(payload.level)
     const cleared = Number(payload.cleared)
     if (![score, level, cleared].every(Number.isSafeInteger)) return false
-    if (score < player.score || cleared < player.cleared || level < 1 || score > 100_000_000 || cleared > 1_000_000 || level > 100_000) return false
+    const clearedDelta = cleared - player.cleared
+    const scoreDelta = score - player.score
+    if (scoreDelta < 0 || clearedDelta < 0 || clearedDelta > 216 || (clearedDelta > 0 && clearedDelta < 6)) return false
+    if (level !== 1 + Math.floor(cleared / 30) || scoreDelta > clearedDelta * 1000 || score > 100_000_000 || cleared > 1_000_000) return false
     player.score = score
     player.level = level
     player.cleared = cleared

@@ -162,6 +162,9 @@ function errorMessage(code: string): string {
     RATE_LIMITED: '요청이 너무 많아 연결을 잠시 쉬고 있습니다.',
     RESUME_FAILED: '이전 방의 복귀 시간이 만료되었습니다. 새 방에 참가해 주세요.',
     INVALID_ITEM: '지금은 해당 아이템을 사용할 수 없습니다.',
+    ROOM_CAPACITY_REACHED: '현재 생성 가능한 방이 가득 찼습니다. 잠시 후 다시 시도해 주세요.',
+    ROOM_CREATION_LIMITED: '짧은 시간에 방을 너무 많이 만들었습니다. 잠시 후 다시 시도해 주세요.',
+    BOT_CAPACITY_REACHED: '현재 AI 플레이어 수용량이 가득 찼습니다.',
   }
   return messages[code] ?? '요청을 처리하지 못했습니다.'
 }

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import WebSocket from 'ws'
 
 function observeRuntime(page: Page) {
   const consoleErrors: string[] = []
@@ -222,3 +223,30 @@ for (const viewport of [
     expect(runtime.failedRequests).toEqual([])
   })
 }
+
+test('websocket rejects foreign origins and throttles room creation abuse', async () => {
+  await new Promise<void>((resolve, reject) => {
+    const socket = new WebSocket('ws://127.0.0.1:4188/ws', { origin: 'https://attacker.invalid' })
+    socket.on('open', () => reject(new Error('foreign origin unexpectedly connected')))
+    socket.on('error', () => resolve())
+  })
+
+  const socket = new WebSocket('ws://127.0.0.1:4188/ws', { origin: 'http://127.0.0.1:4173' })
+  const messages: Array<Record<string, unknown>> = []
+  socket.on('message', (raw) => messages.push(JSON.parse(String(raw)) as Record<string, unknown>))
+  await new Promise<void>((resolve, reject) => { socket.on('open', resolve); socket.on('error', reject) })
+  const waitFor = async (predicate: (message: Record<string, unknown>) => boolean) => {
+    await expect.poll(() => messages.find(predicate), { timeout: 3000 }).toBeTruthy()
+    return messages.splice(messages.findIndex(predicate), 1)[0]
+  }
+  await waitFor((message) => message.type === 'connected')
+  let limited = false
+  for (let index = 0; index < 25 && !limited; index += 1) {
+    socket.send(JSON.stringify({ type: 'create', protocol: 1, name: `Flood ${index}` }))
+    const response = await waitFor((message) => message.type === 'joined' || message.type === 'error')
+    if (response.type === 'error') limited = response.code === 'ROOM_CREATION_LIMITED'
+    else { socket.send(JSON.stringify({ type: 'leave', protocol: 1 })); await new Promise((resolve) => setTimeout(resolve, 10)) }
+  }
+  expect(limited).toBe(true)
+  socket.close()
+})

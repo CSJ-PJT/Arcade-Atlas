@@ -45,6 +45,8 @@ production build는 `dist/`에 생성되며 모든 자산 URL은 `/arcade/` 기�
 
 멀티플레이 서버는 `server/index.mjs`이며 `ARCADE_ALLOWED_ORIGINS`로 허용 사이트를 제한합니다. `deploy/`에는 systemd와 nginx의 검토 가능한 운영 템플릿이 있습니다.
 
+보안 경계에는 Origin allowlist, 실제 프록시 주소 기반 연결 제한, 메시지 크기·빈도 제한, 방/AI 전역 상한, 주소별 방 생성 제한, 점수·레벨 증가 검증, 0600 상태 저장과 Arcade 전용 CSP가 포함됩니다.
+
 ## 정적 배포 계약
 
 직접 `/arcade/stack`으로 진입하려면 정적 서버가 실제 파일을 먼저 찾고, 없으면 `/arcade/index.html`로 fallback해야 합니다. 예: `try_files $uri $uri/ /arcade/index.html`. 이 저장소는 nginx 설정을 포함하거나 운영 서버를 변경하지 않습니다.

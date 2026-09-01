@@ -4,6 +4,7 @@ import { dirname } from 'node:path'
 import { WebSocketServer, WebSocket } from 'ws'
 import { RoomStore } from './roomStore.mjs'
 import { BOT_MOVE_INTERVALS, GravityBotEngine } from './gravityBot.mjs'
+import { MAX_CONNECTIONS, MAX_CONNECTIONS_PER_ADDRESS, MAX_ROOMS, MAX_ROOM_CREATIONS_PER_WINDOW, MAX_TOTAL_BOTS, ROOM_CREATION_WINDOW_MS, SlidingWindowLimiter, clientAddress } from './security.mjs'
 
 const PROTOCOL_VERSION = 1
 const host = process.env.ARCADE_HOST || '127.0.0.1'
@@ -15,6 +16,7 @@ const store = new RoomStore()
 const sockets = new Map()
 const connectionCounts = new Map()
 const botRuns = new Map()
+const roomCreationLimiter = new SlidingWindowLimiter({ windowMs: ROOM_CREATION_WINDOW_MS, limit: MAX_ROOM_CREATIONS_PER_WINDOW })
 let persistTimer
 let shuttingDown = false
 
@@ -113,15 +115,10 @@ function attachSession(socket, session, room, player) {
   session.playerId = player.id
 }
 
-function clientKey(request) {
-  const forwarded = String(request.headers['x-forwarded-for'] ?? '').split(',')[0].trim()
-  return forwarded || request.socket.remoteAddress || 'unknown'
-}
-
 wss.on('connection', (socket, request) => {
-  const address = clientKey(request)
+  const address = clientAddress(request)
   const addressConnections = connectionCounts.get(address) ?? 0
-  if (sockets.size >= 500 || addressConnections >= 8) {
+  if (sockets.size >= MAX_CONNECTIONS || addressConnections >= MAX_CONNECTIONS_PER_ADDRESS) {
     socket.close(1013, 'Connection limit')
     return
   }
@@ -148,6 +145,8 @@ wss.on('connection', (socket, request) => {
     try {
       if (message.type === 'create') {
         if (session.room) return fail(socket, 'ALREADY_IN_ROOM')
+        if (store.rooms.size >= MAX_ROOMS) return fail(socket, 'ROOM_CAPACITY_REACHED')
+        if (!roomCreationLimiter.allow(address)) return fail(socket, 'ROOM_CREATION_LIMITED')
         const { room, player } = store.createRoom(message.name, message.mode)
         attachSession(socket, session, room, player)
         send(socket, { type: 'joined', playerId: player.id, reconnectToken: player.reconnectToken, room: store.publicRoom(room) })
@@ -181,6 +180,8 @@ wss.on('connection', (socket, request) => {
         return
       }
       if (message.type === 'addBot') {
+        const botCount = [...store.rooms.values()].reduce((sum, room) => sum + [...room.players.values()].filter((player) => player.isBot).length, 0)
+        if (botCount >= MAX_TOTAL_BOTS) return fail(socket, 'BOT_CAPACITY_REACHED')
         store.addBot(session.room, session.playerId, message.difficulty)
         broadcastRoom(session.room)
         queuePersist()
@@ -273,6 +274,7 @@ heartbeat.unref()
 
 const sweepInterval = setInterval(() => {
   const result = store.sweep()
+  roomCreationLimiter.sweep()
   for (const room of result.rooms) {
     broadcastRoom(room)
     if (room.status === 'finished') broadcast(room, { type: 'matchEnd', room: store.publicRoom(room) })
