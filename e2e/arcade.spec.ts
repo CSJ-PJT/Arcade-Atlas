@@ -130,6 +130,22 @@ test('host can create an item-mode room while normal mode remains available', as
   await expect(page.getByTestId('multiplayer-lobby')).toContainText('아이템 모드')
 })
 
+test('host can add a real AI player that advances its own board', async ({ page }) => {
+  await page.goto('/arcade/stack/multi')
+  await expect(page.getByTestId('multiplayer-page')).toHaveAttribute('data-connection', 'open')
+  await page.getByLabel('표시 이름').fill('AI Match Host')
+  await page.getByRole('button', { name: '새 방 만들기' }).click()
+  await page.getByLabel('AI 난이도').selectOption('ace')
+  await page.getByRole('button', { name: 'Atlas AI 추가' }).click()
+  const bot = page.locator('.player-standings li[data-bot="true"]')
+  await expect(bot).toContainText('AI · 에이스')
+  await page.getByRole('button', { name: '준비 완료' }).click()
+  await page.getByRole('button', { name: '동시 시작' }).click()
+  await expect(page.getByTestId('multiplayer-match')).toHaveAttribute('data-game-status', 'playing', { timeout: 5000 })
+  await expect.poll(async () => Number(await bot.getAttribute('data-bot-moves')), { timeout: 6000 }).toBeGreaterThan(0)
+  await expect(bot).toContainText('PLAY')
+})
+
 test('a disconnected player resumes the same room and match within the grace window', async ({ browser }) => {
   test.setTimeout(45_000)
   const hostContext = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' })

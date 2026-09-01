@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { WebSocketServer, WebSocket } from 'ws'
 import { RoomStore } from './roomStore.mjs'
+import { BOT_MOVE_INTERVALS, GravityBotEngine } from './gravityBot.mjs'
 
 const PROTOCOL_VERSION = 1
 const host = process.env.ARCADE_HOST || '127.0.0.1'
@@ -13,6 +14,7 @@ const allowedOrigins = new Set((process.env.ARCADE_ALLOWED_ORIGINS || 'http://12
 const store = new RoomStore()
 const sockets = new Map()
 const connectionCounts = new Map()
+const botRuns = new Map()
 let persistTimer
 let shuttingDown = false
 
@@ -71,6 +73,29 @@ function broadcast(room, payload) {
 
 function broadcastRoom(room) {
   broadcast(room, { type: 'roomState', room: store.publicRoom(room) })
+}
+
+function startBots(room, restored = false) {
+  for (const player of room.players.values()) {
+    if (!player.isBot || player.gameStatus === 'gameOver') continue
+    const engine = new GravityBotEngine(room.seed, player.botDifficulty)
+    if (restored && player.botMoves > 0) engine.replay(player.botMoves)
+    botRuns.set(player.id, { room, playerId: player.id, engine, nextAt: Math.max(Date.now(), restored ? Date.now() + 500 : room.startsAt) })
+  }
+}
+
+function stopRoomBots(room) {
+  for (const [id, run] of botRuns) if (run.room === room) botRuns.delete(id)
+}
+
+function letBotUseItem(room, player) {
+  let event = null
+  if (player.items.shield > 0 && !player.shielded) event = store.useItem(room, player.id, 'shield')
+  else if (player.items.pulse > 0) {
+    const target = [...room.players.values()].filter((entry) => !entry.isBot && entry.connected && entry.gameStatus === 'playing').sort((a, b) => b.score - a.score)[0]
+    if (target) event = store.useItem(room, player.id, 'pulse', target.id)
+  }
+  if (event) broadcast(room, { type: 'itemEvent', ...event })
 }
 
 function fail(socket, code) {
@@ -155,9 +180,23 @@ wss.on('connection', (socket, request) => {
         queuePersist()
         return
       }
+      if (message.type === 'addBot') {
+        store.addBot(session.room, session.playerId, message.difficulty)
+        broadcastRoom(session.room)
+        queuePersist()
+        return
+      }
+      if (message.type === 'removeBot') {
+        if (!store.removeBot(session.room, session.playerId, message.botId)) return fail(socket, 'INVALID_STATE')
+        botRuns.delete(String(message.botId ?? ''))
+        broadcastRoom(session.room)
+        queuePersist()
+        return
+      }
       if (message.type === 'start') {
         if (!store.canStart(session.room, session.playerId)) return fail(socket, 'NOT_READY')
         const match = store.start(session.room)
+        startBots(session.room)
         broadcast(session.room, { type: 'matchStart', ...match })
         broadcastRoom(session.room)
         queuePersist()
@@ -175,6 +214,10 @@ wss.on('connection', (socket, request) => {
       if (message.type === 'useItem') {
         const event = store.useItem(session.room, session.playerId, message.itemType, message.targetId)
         if (!event) return fail(socket, 'INVALID_ITEM')
+        if (event.itemType === 'pulse' && !event.blocked && session.room.players.get(event.targetId)?.isBot) {
+          const run = botRuns.get(event.targetId)
+          if (run) run.nextAt = 0
+        }
         broadcast(session.room, { type: 'itemEvent', ...event })
         broadcastRoom(session.room)
         queuePersist()
@@ -182,6 +225,7 @@ wss.on('connection', (socket, request) => {
       }
       if (message.type === 'rematch') {
         if (!store.rematch(session.room, session.playerId)) return fail(socket, 'INVALID_STATE')
+        stopRoomBots(session.room)
         broadcast(session.room, { type: 'rematch', room: store.publicRoom(session.room) })
         broadcastRoom(session.room)
         queuePersist()
@@ -237,6 +281,25 @@ const sweepInterval = setInterval(() => {
 }, 2_000)
 sweepInterval.unref()
 
+const botInterval = setInterval(() => {
+  const now = Date.now()
+  for (const [id, run] of botRuns) {
+    const player = run.room.players.get(run.playerId)
+    if (store.rooms.get(run.room.code) !== run.room || !player || run.room.status !== 'playing' || player.gameStatus === 'gameOver') { botRuns.delete(id); continue }
+    if (now < run.nextAt) continue
+    const snapshot = run.engine.step()
+    run.nextAt = now + BOT_MOVE_INTERVALS[player.botDifficulty]
+    if (!store.updateProgress(run.room, player.id, { matchId: run.room.matchId, ...snapshot, botMoves: snapshot.moves })) { botRuns.delete(id); continue }
+    letBotUseItem(run.room, player)
+    broadcastRoom(run.room)
+    if (run.room.status === 'finished') broadcast(run.room, { type: 'matchEnd', room: store.publicRoom(run.room) })
+    queuePersist()
+  }
+}, 100)
+botInterval.unref()
+
+for (const room of store.rooms.values()) if (room.status === 'playing') startBots(room, true)
+
 server.listen(port, host, () => console.log(`Arcade multiplayer listening on http://${host}:${port}`))
 
 async function shutdown() {
@@ -244,6 +307,7 @@ async function shutdown() {
   shuttingDown = true
   clearInterval(heartbeat)
   clearInterval(sweepInterval)
+  clearInterval(botInterval)
   clearTimeout(persistTimer)
   try { await persistNow() }
   catch { console.error('Arcade state persist failed during shutdown') }

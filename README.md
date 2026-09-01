@@ -6,7 +6,7 @@ Arcade Atlas는 `/arcade/` 아래에서 실행되는 독립 브라우저 게임 
 
 - `/arcade/`: catalog 기반 게임 선택 홈
 - `/arcade/stack`: Gravity Stack 싱글플레이
-- `/arcade/stack/multi`: 2~4명 실시간 대전
+- `/arcade/stack/multi`: 사람과 Atlas AI를 합쳐 2~4명 실시간 대전
 - Orbit Snake, Core Breaker: 준비 중 카드만 제공
 
 ## 기술 스택
@@ -53,8 +53,9 @@ production build는 `dist/`에 생성되며 모든 자산 URL은 `/arcade/` 기�
 
 - 실시간 대전은 WebSocket 임시 방을 사용합니다. 운영에서는 상태를 서비스 전용 파일에 원자 저장해 프로세스 재시작 후에도 30초 동안 복귀할 수 있습니다.
 - 자동 재접속, heartbeat, 연결 유예, 호스트 승계, 재대전을 지원합니다.
+- 방장은 루키·파일럿·에이스 속도의 서버 실행형 Atlas AI 플레이어를 추가할 수 있습니다.
 - 인증 및 신뢰 가능한 서버 랭킹은 제공하지 않습니다.
-- P0-A에서는 외부 음원과 합성 오디오를 모두 생략했습니다.
+- 사용자 제공 대기 음악 1곡과 인게임 전용 무작위 재생 음악 6곡을 사용합니다.
 - 최고 점수는 `arcade:gravity-stack:best:v1` 키로 이 브라우저에만 저장됩니다.
 - Atlas Management 및 다른 Atlas 저장소와 독립적입니다.
 - 정적 앱과 실시간 서버는 각각 독립적으로 배포할 수 있습니다.

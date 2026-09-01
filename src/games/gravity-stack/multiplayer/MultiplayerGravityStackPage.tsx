@@ -8,7 +8,7 @@ import { GravityStackEngine } from '../core/engine'
 import type { EngineSnapshot, GameCommand } from '../core/types'
 import { useMultiplayerRoom } from './useMultiplayerRoom'
 import type { MatchStart, MultiplayerPlayer, MultiplayerRoom } from './types'
-import type { ItemEvent, MultiplayerMode } from './types'
+import type { BotDifficulty, ItemEvent, MultiplayerMode } from './types'
 import { useMusicScope } from '../../../audio/MusicProvider'
 import '../gravity-stack.css'
 import './multiplayer.css'
@@ -57,7 +57,7 @@ export function MultiplayerGravityStackPage() {
         </section>
       )}
       {multiplayer.room && !multiplayer.match && me && (
-        <MultiplayerLobby room={multiplayer.room} me={me} error={multiplayer.error} onReady={multiplayer.setReady} onStart={multiplayer.startMatch} />
+        <MultiplayerLobby room={multiplayer.room} me={me} error={multiplayer.error} onReady={multiplayer.setReady} onStart={multiplayer.startMatch} onAddBot={multiplayer.addBot} onRemoveBot={multiplayer.removeBot} />
       )}
       {multiplayer.room && multiplayer.match && me && (
         <MultiplayerMatch room={multiplayer.room} me={me} match={multiplayer.match} itemEvent={multiplayer.itemEvent} onUseItem={multiplayer.useItem} sendProgress={multiplayer.sendProgress} onRematch={multiplayer.rematch} />
@@ -66,7 +66,8 @@ export function MultiplayerGravityStackPage() {
   )
 }
 
-function MultiplayerLobby({ room, me, error, onReady, onStart }: { room: MultiplayerRoom; me: MultiplayerPlayer; error: string; onReady: (ready: boolean) => boolean; onStart: () => boolean }) {
+function MultiplayerLobby({ room, me, error, onReady, onStart, onAddBot, onRemoveBot }: { room: MultiplayerRoom; me: MultiplayerPlayer; error: string; onReady: (ready: boolean) => boolean; onStart: () => boolean; onAddBot: (difficulty: BotDifficulty) => boolean; onRemoveBot: (id: string) => boolean }) {
+  const [difficulty, setDifficulty] = useState<BotDifficulty>('pilot')
   const allReady = room.players.length >= 2 && room.players.every((player) => player.connected && player.ready)
   return (
     <section className="multiplayer-lobby" data-testid="multiplayer-lobby">
@@ -74,7 +75,8 @@ function MultiplayerLobby({ room, me, error, onReady, onStart }: { room: Multipl
       <h1>방 코드 <strong data-testid="room-code">{room.code}</strong></h1>
       <p className="mode-badge">{room.mode === 'items' ? '아이템 모드' : '일반 모드'}</p>
       <p>코드를 함께 플레이할 사람에게 전달하세요. 최대 4명까지 참가할 수 있습니다.</p>
-      <PlayerStandings players={room.players} />
+      <PlayerStandings players={room.players} onRemoveBot={me.isHost ? onRemoveBot : undefined} />
+      {me.isHost && <div className="bot-controls"><label>AI 난이도<select value={difficulty} onChange={(event) => setDifficulty(event.target.value as BotDifficulty)}><option value="rookie">루키 · 여유롭게</option><option value="pilot">파일럿 · 균형</option><option value="ace">에이스 · 빠르게</option></select></label><button className="secondary-action" type="button" disabled={room.players.length >= 4} onClick={() => onAddBot(difficulty)}>Atlas AI 추가</button></div>}
       <div className="lobby-actions">
         <button className={me.ready ? 'secondary-action' : 'primary-action'} type="button" onClick={() => onReady(!me.ready)}>{me.ready ? '준비 취소' : '준비 완료'}</button>
         {me.isHost && <button className="primary-action" type="button" disabled={!allReady} onClick={onStart}>동시 시작</button>}
@@ -150,7 +152,9 @@ function MultiplayerMatch({ room, me, match, itemEvent, onUseItem, sendProgress,
   )
 }
 
-function PlayerStandings({ players, currentPlayerId }: { players: MultiplayerPlayer[]; currentPlayerId?: string }) {
+function PlayerStandings({ players, currentPlayerId, onRemoveBot }: { players: MultiplayerPlayer[]; currentPlayerId?: string; onRemoveBot?: (id: string) => boolean }) {
   const ordered = [...players].sort((a, b) => b.score - a.score || b.cleared - a.cleared || a.name.localeCompare(b.name))
-  return <ol className="player-standings">{ordered.map((player) => <li key={player.id} data-self={player.id === currentPlayerId} data-connected={player.connected}><span><strong>{player.name}</strong>{player.isHost && <small>HOST</small>}</span><span>{player.score.toLocaleString()}점 · Lv.{player.level}</span><em>{!player.connected ? 'OFFLINE' : player.gameStatus === 'gameOver' ? 'OUT' : player.gameStatus === 'playing' ? 'PLAY' : player.ready ? 'READY' : 'WAIT'}</em></li>)}</ol>
+  return <ol className="player-standings">{ordered.map((player) => <li key={player.id} data-self={player.id === currentPlayerId} data-connected={player.connected} data-bot={player.isBot} data-bot-moves={player.botMoves ?? undefined}><span><strong>{player.name}</strong>{player.isHost && <small>HOST</small>}{player.isBot && <small>AI · {difficultyLabel(player.botDifficulty)}</small>}</span><span>{player.score.toLocaleString()}점 · Lv.{player.level}</span><em>{!player.connected ? 'OFFLINE' : player.gameStatus === 'gameOver' ? 'OUT' : player.gameStatus === 'playing' ? 'PLAY' : player.ready ? 'READY' : 'WAIT'}</em>{player.isBot && onRemoveBot && <button className="bot-remove" type="button" aria-label={`${player.name} 제거`} onClick={() => onRemoveBot(player.id)}>제거</button>}</li>)}</ol>
 }
+
+function difficultyLabel(value: BotDifficulty | null) { return value === 'rookie' ? '루키' : value === 'ace' ? '에이스' : '파일럿' }

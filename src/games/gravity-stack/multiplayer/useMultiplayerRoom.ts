@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ItemEvent, ItemType, MatchStart, MultiplayerMode, MultiplayerRoom } from './types'
+import type { BotDifficulty, ItemEvent, ItemType, MatchStart, MultiplayerMode, MultiplayerRoom } from './types'
 
 const PROTOCOL_VERSION = 1
 const SESSION_KEY = 'arcade:gravity-stack:multiplayer-session:v1'
@@ -139,6 +139,8 @@ export function useMultiplayerRoom() {
   const setReady = useCallback((ready: boolean) => send({ type: 'ready', ready }), [send])
   const startMatch = useCallback(() => send({ type: 'start' }), [send])
   const rematch = useCallback(() => send({ type: 'rematch' }), [send])
+  const addBot = useCallback((difficulty: BotDifficulty) => send({ type: 'addBot', difficulty }), [send])
+  const removeBot = useCallback((botId: string) => send({ type: 'removeBot', botId }), [send])
   const useItem = useCallback((itemType: ItemType, targetId?: string) => send({ type: 'useItem', itemType, targetId }), [send])
   const sendProgress = useCallback((progress: { matchId: string; score: number; level: number; cleared: number; gameStatus: string }) => {
     const message = { type: 'progress', protocol: PROTOCOL_VERSION, ...progress }
@@ -146,7 +148,7 @@ export function useMultiplayerRoom() {
     return send(message)
   }, [send])
 
-  return { connection, room, playerId, match, itemEvent, error, createRoom, joinRoom, setReady, startMatch, rematch, useItem, sendProgress }
+  return { connection, room, playerId, match, itemEvent, error, createRoom, joinRoom, setReady, startMatch, rematch, addBot, removeBot, useItem, sendProgress }
 }
 
 function errorMessage(code: string): string {

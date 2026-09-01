@@ -29,6 +29,8 @@ function publicPlayer(player) {
     id: player.id,
     name: player.name,
     isHost: player.isHost,
+    isBot: player.isBot,
+    botDifficulty: player.botDifficulty,
     ready: player.ready,
     connected: player.connected,
     score: player.score,
@@ -37,6 +39,7 @@ function publicPlayer(player) {
     gameStatus: player.gameStatus,
     items: { ...player.items },
     shielded: player.shielded,
+    botMoves: player.isBot ? player.botMoves : undefined,
   }
 }
 
@@ -74,6 +77,26 @@ export class RoomStore {
     return { room, player }
   }
 
+  addBot(room, playerId, difficulty = 'pilot') {
+    const host = room.players.get(playerId)
+    if (!host?.isHost || room.status !== 'lobby') throw new Error('INVALID_STATE')
+    if (room.players.size >= MAX_PLAYERS) throw new Error('ROOM_FULL')
+    const botCount = [...room.players.values()].filter((player) => player.isBot).length
+    const bot = this.#newBot(botCount + 1, difficulty)
+    room.players.set(bot.id, bot)
+    this.#touch(room)
+    return bot
+  }
+
+  removeBot(room, playerId, botId) {
+    const host = room.players.get(playerId)
+    const bot = room.players.get(String(botId ?? ''))
+    if (!host?.isHost || room.status !== 'lobby' || !bot?.isBot) return false
+    room.players.delete(bot.id)
+    this.#touch(room)
+    return true
+  }
+
   resumeRoom(codeValue, playerIdValue, reconnectToken) {
     const room = this.rooms.get(this.#normalizeCode(codeValue))
     const playerId = String(playerIdValue ?? '')
@@ -87,7 +110,7 @@ export class RoomStore {
 
   setReady(room, playerId, ready) {
     const player = room.players.get(playerId)
-    if (!player?.connected || room.status !== 'lobby') return false
+    if (!player?.connected || player.isBot || room.status !== 'lobby') return false
     player.ready = Boolean(ready)
     this.#touch(room)
     return true
@@ -110,6 +133,7 @@ export class RoomStore {
       player.level = 1
       player.cleared = 0
       player.gameStatus = 'playing'
+      player.botMoves = 0
       player.items = { pulse: 0, shield: 0 }
       player.itemMilestone = 0
       player.shielded = false
@@ -135,6 +159,7 @@ export class RoomStore {
     player.level = level
     player.cleared = cleared
     player.gameStatus = payload.gameStatus === 'gameOver' ? 'gameOver' : 'playing'
+    if (player.isBot && Number.isSafeInteger(payload.botMoves) && payload.botMoves >= player.botMoves) player.botMoves = payload.botMoves
     if (room.mode === 'items') {
       const milestone = Math.floor(cleared / ITEM_CHARGE_CELLS)
       while (player.itemMilestone < milestone) {
@@ -176,7 +201,7 @@ export class RoomStore {
     room.matchId = ''
     room.startsAt = 0
     for (const entry of room.players.values()) {
-      entry.ready = false
+      entry.ready = entry.isBot
       entry.score = 0
       entry.level = 1
       entry.cleared = 0
@@ -191,7 +216,7 @@ export class RoomStore {
 
   markDisconnected(room, playerId) {
     const player = room.players.get(playerId)
-    if (!player) return false
+    if (!player || player.isBot) return false
     player.connected = false
     player.ready = false
     player.disconnectedAt = this.now()
@@ -202,13 +227,13 @@ export class RoomStore {
   removePlayer(room, playerId) {
     const wasHost = room.players.get(playerId)?.isHost
     if (!room.players.delete(playerId)) return false
-    if (room.players.size === 0) {
+    if (room.players.size === 0 || [...room.players.values()].every((player) => player.isBot)) {
       this.rooms.delete(room.code)
       return true
     }
     if (wasHost) {
       const players = [...room.players.values()]
-      const nextHost = players.find((entry) => entry.connected) ?? players[0]
+      const nextHost = players.find((entry) => entry.connected && !entry.isBot) ?? players.find((entry) => !entry.isBot)
       if (nextHost) nextHost.isHost = true
     }
     if (room.status === 'playing' && room.players.size === 1) room.status = 'finished'
@@ -223,7 +248,7 @@ export class RoomStore {
     for (const [code, room] of this.rooms) {
       let roomChanged = false
       for (const player of [...room.players.values()]) {
-        if (!player.connected && player.disconnectedAt !== null && now - player.disconnectedAt >= reconnectGraceMs) {
+        if (!player.isBot && !player.connected && player.disconnectedAt !== null && now - player.disconnectedAt >= reconnectGraceMs) {
           this.removePlayer(room, player.id)
           changed = true
           roomChanged = true
@@ -267,13 +292,15 @@ export class RoomStore {
         if (!entry?.id || !entry?.reconnectToken) continue
         players.set(String(entry.id), {
           id: String(entry.id), reconnectToken: String(entry.reconnectToken), name: cleanName(entry.name),
-          isHost: Boolean(entry.isHost), ready: false, connected: false, disconnectedAt: now,
+          isHost: Boolean(entry.isHost), isBot: Boolean(entry.isBot), botDifficulty: ['rookie', 'pilot', 'ace'].includes(entry.botDifficulty) ? entry.botDifficulty : null,
+          ready: Boolean(entry.isBot && source.status === 'lobby'), connected: Boolean(entry.isBot), disconnectedAt: entry.isBot ? null : now,
           score: Number.isSafeInteger(entry.score) ? entry.score : 0,
           level: Number.isSafeInteger(entry.level) ? entry.level : 1,
           cleared: Number.isSafeInteger(entry.cleared) ? entry.cleared : 0,
           gameStatus: entry.gameStatus === 'gameOver' ? 'gameOver' : entry.gameStatus === 'playing' ? 'playing' : 'ready',
           items: { pulse: Number(entry.items?.pulse) || 0, shield: Number(entry.items?.shield) || 0 },
           itemMilestone: Number(entry.itemMilestone) || 0, shielded: Boolean(entry.shielded),
+          botMoves: Number(entry.botMoves) || 0,
         })
       }
       if (players.size === 0) continue
@@ -293,6 +320,18 @@ export class RoomStore {
     return {
       id: this.id(), reconnectToken: this.random(24).toString('base64url'), name: cleanName(name),
       isHost, ready: false, connected: true, disconnectedAt: null,
+      isBot: false, botDifficulty: null, botMoves: 0,
+      score: 0, level: 1, cleared: 0, gameStatus: 'ready',
+      items: { pulse: 0, shield: 0 }, itemMilestone: 0, shielded: false,
+    }
+  }
+
+  #newBot(index, difficulty) {
+    const level = ['rookie', 'pilot', 'ace'].includes(difficulty) ? difficulty : 'pilot'
+    return {
+      id: this.id(), reconnectToken: this.random(24).toString('base64url'), name: `Atlas AI ${index}`,
+      isHost: false, isBot: true, botDifficulty: level, botMoves: 0,
+      ready: true, connected: true, disconnectedAt: null,
       score: 0, level: 1, cleared: 0, gameStatus: 'ready',
       items: { pulse: 0, shield: 0 }, itemMilestone: 0, shielded: false,
     }

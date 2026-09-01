@@ -30,6 +30,22 @@ describe('multiplayer room store', () => {
     expect(() => store.joinRoom(room.code, 'overflow')).toThrow('ROOM_FULL')
   })
 
+  it('lets only the host manage ready AI players and removes bot-only rooms', () => {
+    const { store } = deterministicStore()
+    const host = store.createRoom('Host')
+    const bot = store.addBot(host.room, host.player.id, 'ace')
+    expect(bot.isBot).toBe(true)
+    expect(bot.ready).toBe(true)
+    expect(bot.botDifficulty).toBe('ace')
+    expect(store.publicRoom(host.room).players.find((player) => player.id === bot.id)?.isBot).toBe(true)
+    expect(store.setReady(host.room, bot.id, false)).toBe(false)
+    expect(store.removeBot(host.room, host.player.id, bot.id)).toBe(true)
+    const replacement = store.addBot(host.room, host.player.id, 'pilot')
+    store.removePlayer(host.room, host.player.id)
+    expect(store.rooms.has(host.room.code)).toBe(false)
+    expect(replacement.isHost).toBe(false)
+  })
+
   it('keeps normal rooms item-free and validates item attacks on the server', () => {
     const { store } = deterministicStore()
     const host = store.createRoom('Host', 'items')

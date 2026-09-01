@@ -6,53 +6,58 @@ const MUTE_KEY = 'arcade:music:muted:v1'
 const MusicContext = createContext({ setScope: (_scope: MusicScope) => { void _scope } })
 
 export function MusicProvider({ children }: PropsWithChildren) {
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const lobbyAudioRef = useRef<HTMLAudioElement | null>(null)
+  const gameAudioRef = useRef<HTMLAudioElement | null>(null)
   const scopeRef = useRef<MusicScope>('lobby')
   const unlockedRef = useRef(false)
   const [muted, setMuted] = useState(() => localStorage.getItem(MUTE_KEY) === 'true')
   const [scope, setScopeState] = useState<MusicScope>('lobby')
 
   const play = useCallback(() => {
-    const audio = audioRef.current
+    const audio = scopeRef.current === 'lobby' ? lobbyAudioRef.current : gameAudioRef.current
     if (!audio || muted || !unlockedRef.current) return
     void audio.play().catch(() => {})
   }, [muted])
 
   useEffect(() => {
-    const audio = new Audio()
-    audio.preload = 'none'
-    audio.loop = true
-    audio.volume = 0.34
-    audioRef.current = audio
+    const lobbyAudio = new Audio()
+    const gameAudio = new Audio()
+    lobbyAudio.preload = 'none'
+    gameAudio.preload = 'none'
+    lobbyAudio.src = lobbyTrack
+    gameAudio.src = pickGameTrack('')
+    lobbyAudio.loop = true
+    gameAudio.loop = false
+    lobbyAudio.volume = 0.34
+    gameAudio.volume = 0.34
+    lobbyAudioRef.current = lobbyAudio
+    gameAudioRef.current = gameAudio
     const unlock = () => { unlockedRef.current = true; window.setTimeout(play, 150) }
     window.addEventListener('pointerdown', unlock, { once: true })
     window.addEventListener('keydown', unlock, { once: true })
     return () => {
       window.removeEventListener('pointerdown', unlock)
       window.removeEventListener('keydown', unlock)
-      audio.pause()
-      audio.src = ''
-      audioRef.current = null
+      lobbyAudio.pause()
+      gameAudio.pause()
+      lobbyAudioRef.current = null
+      gameAudioRef.current = null
     }
   }, [play])
 
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
     scopeRef.current = scope
-    audio.pause()
-    audio.currentTime = 0
-    audio.loop = scope === 'lobby'
-    audio.src = scope === 'lobby' ? lobbyTrack : pickGameTrack('')
+    const inactive = scope === 'lobby' ? gameAudioRef.current : lobbyAudioRef.current
+    inactive?.pause()
     play()
   }, [play, scope])
 
   useEffect(() => {
-    const audio = audioRef.current
+    const audio = gameAudioRef.current
     if (!audio) return
     const onEnded = () => {
       if (scopeRef.current !== 'game') return
-      audio.src = pickGameTrack(audio.src.replace(window.location.origin, ''))
+      audio.src = pickGameTrack(new URL(audio.src).pathname)
       play()
     }
     audio.addEventListener('ended', onEnded)
@@ -60,9 +65,7 @@ export function MusicProvider({ children }: PropsWithChildren) {
   }, [play])
 
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    if (muted) audio.pause()
+    if (muted) { lobbyAudioRef.current?.pause(); gameAudioRef.current?.pause() }
     else play()
     localStorage.setItem(MUTE_KEY, String(muted))
   }, [muted, play])

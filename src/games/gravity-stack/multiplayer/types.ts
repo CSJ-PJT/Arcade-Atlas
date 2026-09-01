@@ -1,11 +1,14 @@
 export type MultiplayerGameStatus = 'ready' | 'playing' | 'gameOver'
 export type MultiplayerMode = 'normal' | 'items'
 export type ItemType = 'pulse' | 'shield'
+export type BotDifficulty = 'rookie' | 'pilot' | 'ace'
 
 export interface MultiplayerPlayer {
   id: string
   name: string
   isHost: boolean
+  isBot: boolean
+  botDifficulty: BotDifficulty | null
   ready: boolean
   connected: boolean
   score: number
@@ -14,6 +17,7 @@ export interface MultiplayerPlayer {
   gameStatus: MultiplayerGameStatus
   items: Record<ItemType, number>
   shielded: boolean
+  botMoves?: number
 }
 
 export interface MultiplayerRoom {
