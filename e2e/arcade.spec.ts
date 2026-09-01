@@ -7,9 +7,30 @@ function observeRuntime(page: Page) {
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text())
   })
-  page.on('requestfailed', (request) => failedRequests.push(request.url()))
+  page.on('requestfailed', (request) => {
+    const expectedMediaStop = request.resourceType() === 'media' && request.failure()?.errorText.includes('ERR_ABORTED')
+    if (!expectedMediaStop) failedRequests.push(request.url())
+  })
   return { consoleErrors, failedRequests }
 }
+
+test('owned lobby and in-game music are served from separate playlists', async ({ page }) => {
+  const runtime = observeRuntime(page)
+  await page.goto('/arcade/stack')
+  const lobbyResponsePromise = page.waitForResponse((response) => response.url().endsWith('/arcade/audio/lobby.mp3'))
+  await page.getByRole('button', { name: '음악 시작' }).click()
+  const lobbyResponse = await lobbyResponsePromise
+  expect([200, 206]).toContain(lobbyResponse.status())
+
+  const gameResponsePromise = page.waitForResponse((response) => /\/arcade\/audio\/game-0[1-6]\.mp3$/.test(response.url()))
+  await page.getByRole('button', { name: '게임 시작' }).click()
+  const gameResponse = await gameResponsePromise
+  expect([200, 206]).toContain(gameResponse.status())
+  expect(gameResponse.url()).not.toBe(lobbyResponse.url())
+  await page.getByRole('button', { name: '음악 끄기' }).click()
+  expect(runtime.consoleErrors).toEqual([])
+  expect(runtime.failedRequests).toEqual([])
+})
 
 test('direct Arcade home and catalog navigation work', async ({ page }) => {
   const runtime = observeRuntime(page)
