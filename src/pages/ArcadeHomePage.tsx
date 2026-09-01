@@ -4,6 +4,7 @@ import { AtlasBrand } from '../components/AtlasBrand'
 import { readBestScore } from '../games/gravity-stack/localBest'
 import { useMusicScope } from '../audio/MusicProvider'
 import { useI18n } from '../i18n/I18nProvider'
+import { AtlasAccountButton } from '../auth/AtlasAccountButton'
 
 export function ArcadeHomePage() {
   useMusicScope('lobby')
@@ -14,7 +15,10 @@ export function ArcadeHomePage() {
       <header className="home-hero">
         <div className="home-hero__topbar">
           <AtlasBrand />
-          <span className="online-pill"><i aria-hidden="true" />{t('home.online', '바로 플레이 가능')}</span>
+          <div className="home-account-cluster">
+            <span className="online-pill"><i aria-hidden="true" />{t('home.online', '바로 플레이 가능')}</span>
+            <AtlasAccountButton />
+          </div>
         </div>
         <div className="home-hero__copy">
           <p className="kicker">ARCADE PLAYGROUND</p>
@@ -36,6 +40,16 @@ export function ArcadeHomePage() {
           <span><small>{t('home.players', '플레이 방식')}</small><strong>{t('home.singleMulti', '혼자 또는 함께')}</strong></span>
         </div>
       </header>
+
+      <section className="sso-notice" aria-labelledby="sso-notice-title">
+        <span className="sso-notice__icon" aria-hidden="true">🔐</span>
+        <div>
+          <p className="kicker">ONE ATLAS ACCOUNT</p>
+          <h2 id="sso-notice-title">{t('auth.noticeTitle', 'Sketchfy 계정으로 멀티플레이까지')}</h2>
+          <p>{t('auth.noticeHelp', '기존 Atlas 계정과 로그인 세션을 그대로 사용합니다. 싱글플레이는 로그인 없이 체험할 수 있습니다.')}</p>
+        </div>
+        <Link className="secondary-action" to="/login">{t('auth.readGuide', '로그인 안내 보기')}</Link>
+      </section>
 
       <section className="game-grid" aria-labelledby="game-grid-title">
         <div className="section-heading">

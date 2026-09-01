@@ -19,7 +19,7 @@ export default defineConfig({
       env: { ...process.env, ARCADE_HEARTBEAT_MS: '1000' },
     },
     {
-      command: 'npm run preview -- --host 127.0.0.1 --port 4173',
+      command: 'npm run dev -- --mode e2e --host 127.0.0.1 --port 4173',
       url: 'http://127.0.0.1:4173/arcade/',
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

@@ -5,6 +5,9 @@ import { NotFoundPage } from '../pages/NotFoundPage'
 import { MusicProvider } from '../audio/MusicProvider'
 import { I18nProvider, useI18n } from '../i18n/I18nProvider'
 import { LanguageSwitcher } from '../i18n/LanguageSwitcher'
+import { AuthProvider } from '../auth/AuthProvider'
+import { RequireAtlasAccount } from '../auth/RequireAtlasAccount'
+import { AtlasLoginPage } from '../pages/AtlasLoginPage'
 
 const GravityStackPage = lazy(async () => {
   const module = await import('../games/gravity-stack/GravityStackPage')
@@ -18,8 +21,8 @@ const MultiplayerGravityStackPage = lazy(async () => {
 
 export function App() {
   return (
-    <I18nProvider><BrowserRouter basename="/arcade"><MusicProvider><LocalizedRoutes />
-    </MusicProvider></BrowserRouter></I18nProvider>
+    <I18nProvider><BrowserRouter basename="/arcade"><AuthProvider><MusicProvider><LocalizedRoutes />
+    </MusicProvider></AuthProvider></BrowserRouter></I18nProvider>
   )
 }
 
@@ -29,6 +32,7 @@ function LocalizedRoutes() {
       <LanguageSwitcher />
       <Routes>
         <Route path="/" element={<ArcadeHomePage />} />
+        <Route path="/login" element={<AtlasLoginPage />} />
         <Route
           path="/stack"
           element={(
@@ -40,9 +44,11 @@ function LocalizedRoutes() {
         <Route
           path="/stack/multi"
           element={(
-            <Suspense fallback={<main className="route-loading" aria-live="polite">{t('route.multiLoading', '실시간 대전 연결 중…')}</main>}>
-              <MultiplayerGravityStackPage />
-            </Suspense>
+            <RequireAtlasAccount>
+              <Suspense fallback={<main className="route-loading" aria-live="polite">{t('route.multiLoading', '실시간 대전 연결 중…')}</main>}>
+                <MultiplayerGravityStackPage />
+              </Suspense>
+            </RequireAtlasAccount>
           )}
         />
         <Route path="*" element={<NotFoundPage />} />

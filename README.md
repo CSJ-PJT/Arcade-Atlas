@@ -11,6 +11,8 @@ Arcade Atlas는 `/arcade/` 아래에서 실행되는 독립 브라우저 게임 
 - 우측 상단 언어 선택: 한국어, English, 日本語 (브라우저에 선택값 저장)
 - 밝은 아케이드 홈과 Arcade Atlas 전용 에너지 탐사대 일러스트
 - 시작·연쇄·아이템·방어·종료 이벤트별 아케이드 FX와 모션 축소 접근성
+- Sketchfy Atlas와 같은 Supabase Auth 세션을 쓰는 Atlas 통합 로그인
+- 알파·베타 기간에는 싱글플레이 공개, 멀티플레이 로그인 보호
 
 ## 기술 스택
 
@@ -32,6 +34,8 @@ npm run server
 ```
 
 개발 서버의 `http://localhost:5173/arcade/`에서 시작합니다.
+
+통합 로그인을 시험하려면 Sketchfy Atlas와 같은 브라우저용 공개 설정을 process environment로 주입합니다. `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`만 사용하며 service role 또는 secret key는 브라우저 빌드에 넣지 않습니다.
 
 ## 검증
 
@@ -59,11 +63,11 @@ production build는 `dist/`에 생성되며 모든 자산 URL은 `/arcade/` 기�
 - 실시간 대전은 WebSocket 임시 방을 사용합니다. 서버가 공통 게임 엔진으로 순서화된 입력을 판정하고 versioned board checkpoint를 원자 저장해 새로고침·프로세스 재시작 후에도 30초 동안 복귀할 수 있습니다.
 - 자동 재접속, heartbeat, 연결 유예, 호스트 승계, 재대전을 지원합니다.
 - 방장은 서로 다른 판단 품질과 decision seed를 가진 서버 실행형 Atlas AI 플레이어를 추가할 수 있습니다.
-- 인증 및 신뢰 가능한 서버 랭킹은 제공하지 않습니다.
+- 인증은 기존 Sketchfy Atlas 계정과 브라우저 세션을 공유합니다. 멀티플레이 진입은 로그인으로 보호하지만 신뢰 가능한 서버 랭킹은 아직 제공하지 않습니다.
 - 로비 1곡과 게임 전용 6곡은 사용자가 권리를 보유한 음원이며, 로비 곡이 게임 중 재생되지 않도록 재생 목록을 분리합니다.
 - `public/images/arcade-energy-crew.png`는 이 프로젝트를 위해 새로 생성한 독자 캐릭터 자산이며 외부 게임 캐릭터를 사용하지 않습니다.
 - 최고 점수는 `arcade:gravity-stack:best:v1` 키로 이 브라우저에만 저장됩니다.
 - Atlas Management 및 다른 Atlas 저장소와 독립적입니다.
 - 정적 앱과 실시간 서버는 각각 독립적으로 배포할 수 있습니다.
 
-세부 구조는 [architecture](docs/architecture.md), 규칙은 [gravity-stack-rules](docs/gravity-stack-rules.md)를 참고하세요.
+세부 구조는 [architecture](docs/architecture.md), [Atlas 통합 로그인](docs/atlas-sso.md), 규칙은 [gravity-stack-rules](docs/gravity-stack-rules.md)를 참고하세요.

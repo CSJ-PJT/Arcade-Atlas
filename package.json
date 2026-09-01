@@ -16,6 +16,7 @@
     "test:load": "node --import tsx scripts/load-test.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.110.8",
     "phaser": "^3.90.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
