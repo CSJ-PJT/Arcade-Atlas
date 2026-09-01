@@ -16,6 +16,7 @@ describe('GravityStackPage', () => {
     expect(page).toHaveAttribute('data-game-status', 'ready')
     await user.click(screen.getByRole('button', { name: '게임 시작' }))
     expect(page).toHaveAttribute('data-game-status', 'playing')
+    expect(await screen.findByRole('status')).toHaveTextContent('GO!')
     await user.click(screen.getByRole('button', { name: '일시정지' }))
     expect(page).toHaveAttribute('data-game-status', 'paused')
     expect(screen.getByRole('dialog', { name: '일시정지' })).toBeInTheDocument()

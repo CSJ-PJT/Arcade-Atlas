@@ -4,6 +4,7 @@ import { AtlasBrand } from '../../../components/AtlasBrand'
 import { GravityStackCanvas } from '../components/GravityStackCanvas'
 import { GravityStackControls } from '../components/GravityStackControls'
 import { GravityStackHud } from '../components/GravityStackHud'
+import { ArcadeFxOverlay, type ArcadeFxCue } from '../components/ArcadeFxOverlay'
 import { GravityStackEngine } from '../core/engine'
 import type { EngineSnapshot, GameCommand } from '../core/types'
 import { useMultiplayerRoom } from './useMultiplayerRoom'
@@ -93,7 +94,9 @@ function MultiplayerMatch({ room, me, match, itemEvent, authoritativeState, onUs
   const { t, locale } = useI18n()
   const engine = useMemo(() => new GravityStackEngine(match.seed), [match.seed])
   const [snapshot, setSnapshot] = useState(() => engine.getSnapshot())
+  const [fxCue, setFxCue] = useState<ArcadeFxCue | null>(null)
   const itemEventRef = useRef('')
+  const previousFxState = useRef({ status: snapshot.status, cleared: snapshot.totalClearedCells, roomStatus: room.status })
 
   useEffect(() => {
     if (authoritativeState && engine.restoreCheckpoint(authoritativeState)) {
@@ -111,7 +114,35 @@ function MultiplayerMatch({ room, me, match, itemEvent, authoritativeState, onUs
   useEffect(() => {
     if (!itemEvent || itemEvent.eventId === itemEventRef.current) return
     itemEventRef.current = itemEvent.eventId
-  }, [itemEvent])
+    const source = room.players.find((player) => player.id === itemEvent.sourceId)
+    const targetPlayer = room.players.find((player) => player.id === itemEvent.targetId)
+    if (itemEvent.itemType === 'shield' && itemEvent.sourceId === me.id) {
+      queueMicrotask(() => setFxCue({ id: itemEvent.eventId, kind: 'shield', eyebrow: t('fx.itemReady', 'ITEM ACTIVE'), title: t('fx.shieldOn', '방어막 발동!'), detail: t('fx.blockOne', '중력 펄스 1회 방어') }))
+    }
+    else if (itemEvent.itemType === 'pulse' && itemEvent.targetId === me.id) {
+      queueMicrotask(() => setFxCue(itemEvent.blocked
+        ? { id: itemEvent.eventId, kind: 'blocked', eyebrow: t('fx.perfectGuard', 'PERFECT GUARD'), title: t('fx.blocked', '공격 방어!'), detail: t('fx.shieldSaved', '방어막이 보드를 지켰습니다') }
+        : { id: itemEvent.eventId, kind: 'pulse', eyebrow: t('fx.warning', 'WARNING'), title: t('fx.pulseHit', '중력 펄스!'), detail: t('fx.attackedBy', `${source?.name ?? 'RIVAL'}의 공격`, { name: source?.name ?? 'RIVAL' }) }))
+    }
+    else if (itemEvent.itemType === 'pulse' && itemEvent.sourceId === me.id) {
+      queueMicrotask(() => setFxCue({ id: itemEvent.eventId, kind: 'pulse', eyebrow: t('fx.itemLaunch', 'ITEM LAUNCH'), title: t('fx.pulseSent', '중력 펄스 발사!'), detail: t('fx.targeted', `${targetPlayer?.name ?? 'RIVAL'}에게 적중`, { name: targetPlayer?.name ?? 'RIVAL' }) }))
+    }
+  }, [itemEvent, me.id, room.players, t])
+
+  useEffect(() => {
+    const previous = previousFxState.current
+    if (room.status === 'finished' && previous.roomStatus !== 'finished') {
+      queueMicrotask(() => setFxCue({ id: `finish-${room.matchId}`, kind: 'finish', eyebrow: t('fx.matchComplete', 'MATCH COMPLETE'), title: t('fx.finish', '게임 종료!'), detail: t('fx.rankingReady', '최종 순위를 확인하세요') }))
+    }
+    else if (snapshot.totalClearedCells > previous.cleared) {
+      const chain = Math.max(1, snapshot.lastWaveCount)
+      queueMicrotask(() => setFxCue({ id: `chain-${snapshot.revision}`, kind: 'chain', eyebrow: t('fx.energyBurst', 'ENERGY BURST'), title: t('fx.chain', `${chain} CHAIN!`, { chain }), detail: t('fx.cellsCleared', `${snapshot.totalClearedCells - previous.cleared}셀 방전`, { count: snapshot.totalClearedCells - previous.cleared }) }))
+    }
+    else if (snapshot.status === 'playing' && previous.status !== 'playing') {
+      queueMicrotask(() => setFxCue({ id: `start-${match.matchId}-${snapshot.revision}`, kind: 'start', eyebrow: t('fx.ready', 'READY'), title: t('fx.go', 'GO!'), detail: t('fx.outscore', '상대보다 높이 쌓으세요') }))
+    }
+    previousFxState.current = { status: snapshot.status, cleared: snapshot.totalClearedCells, roomStatus: room.status }
+  }, [match.matchId, room.matchId, room.status, snapshot, t])
 
   const target = room.players.filter((player) => player.id !== me.id && player.connected && player.gameStatus === 'playing').sort((a, b) => b.score - a.score)[0]
   const winner = [...room.players].sort((a, b) => b.score - a.score || b.maxChain - a.maxChain || b.cleared - a.cleared)[0]
@@ -122,10 +153,11 @@ function MultiplayerMatch({ room, me, match, itemEvent, authoritativeState, onUs
       <section className="gravity-stage">
         <div className="gravity-stage__heading"><div><p className="kicker">ROOM {room.code}</p><h1>{t('multi.matchTitle', '실시간 에너지 대전')}</h1></div><p>{t('multi.sameSeed', '모든 참가자가 같은 seed로 시작했습니다.')}</p></div>
         <GravityStackHud snapshot={snapshot} bestScore={0} />
-        <div className="board-frame" tabIndex={0} aria-label={t('multi.board', '멀티플레이 Gravity Stack 게임 보드')}>
+        <div className="board-frame" data-fx={fxCue?.kind ?? ''} tabIndex={0} aria-label={t('multi.board', '멀티플레이 Gravity Stack 게임 보드')}>
           <GravityStackCanvas engine={engine} onSnapshot={publish} simulationEnabled={false} onCommand={command} />
           {snapshot.status === 'ready' && <div className="game-overlay"><p className="kicker">SYNC COUNTDOWN</p><h2>{t('multi.sync', '동시 시작 준비 중')}</h2></div>}
           {room.status === 'finished' ? <div className="game-overlay" role="dialog" aria-label={t('multi.finished', '대전 종료')}><p className="kicker">MATCH COMPLETE</p><h2>{t('multi.finished', '대전 종료')}</h2><p>{t('multi.mvp', `MVP ${winner.name} · ${winner.score.toLocaleString(locale)}점 · ${winner.cleared}셀 · 최대 ${winner.maxChain}연쇄`, { name: winner.name, score: winner.score.toLocaleString(locale), cleared: winner.cleared, chain: winner.maxChain })}</p><div className="overlay-actions">{me.isHost && <button className="primary-action" type="button" onClick={onRematch}>{t('multi.rematch', '다시 대전 준비')}</button>}<Link className="secondary-action" to="/">{t('common.arcadeHome', 'Arcade 홈')}</Link></div></div> : snapshot.status === 'gameOver' && <div className="game-overlay" role="dialog" aria-label={t('multi.myFinished', '내 플레이 종료')}><p className="kicker">RUN COMPLETE</p><h2>{me.forfeited ? t('multi.forfeited', '대전 기권') : t('multi.myFinished', '내 플레이 종료')}</h2><p>{t('multi.waiting', '다른 참가자의 최종 기록을 기다리는 중입니다.')}</p><Link className="secondary-action" to="/">{t('common.arcadeHome', 'Arcade 홈')}</Link></div>}
+          <ArcadeFxOverlay cue={fxCue} />
         </div>
         <GravityStackControls onCommand={command} status={snapshot.status} allowPause={false} />
         {room.status === 'playing' && snapshot.status === 'playing' && <button className="secondary-action" type="button" onClick={onForfeit}>{t('multi.forfeit', '대전 포기')}</button>}

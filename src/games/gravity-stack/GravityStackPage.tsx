@@ -7,6 +7,7 @@ import { GravityStackCanvas } from './components/GravityStackCanvas'
 import { GravityStackControls } from './components/GravityStackControls'
 import { GravityStackHud } from './components/GravityStackHud'
 import { GravityStackResults } from './components/GravityStackResults'
+import { ArcadeFxOverlay, type ArcadeFxCue } from './components/ArcadeFxOverlay'
 import { readBestScore, writeBestScore } from './localBest'
 import './gravity-stack.css'
 import { useMusicScope } from '../../audio/MusicProvider'
@@ -27,6 +28,8 @@ export function GravityStackPage() {
   const engine = useMemo(() => new GravityStackEngine(createSeed()), [])
   const [snapshot, setSnapshot] = useState(() => engine.getSnapshot())
   const [bestScore, setBestScore] = useState(() => readBestScore())
+  const [fxCue, setFxCue] = useState<ArcadeFxCue | null>(null)
+  const previousFxState = useRef({ status: snapshot.status, cleared: snapshot.totalClearedCells })
   useMusicScope(snapshot.status === 'ready' ? 'lobby' : 'game')
   const readyButtonRef = useRef<HTMLButtonElement>(null)
   const pauseButtonRef = useRef<HTMLButtonElement>(null)
@@ -56,6 +59,21 @@ export function GravityStackPage() {
     if (snapshot.status === 'paused') pauseButtonRef.current?.focus({ preventScroll: true })
   }, [snapshot.status])
 
+  useEffect(() => {
+    const previous = previousFxState.current
+    if (snapshot.status === 'gameOver' && previous.status !== 'gameOver') {
+      queueMicrotask(() => setFxCue({ id: `finish-${snapshot.revision}`, kind: 'finish', eyebrow: t('fx.runComplete', 'RUN COMPLETE'), title: t('fx.finish', '게임 종료!'), detail: t('fx.finalScore', `최종 점수 ${snapshot.score.toLocaleString()}`, { score: snapshot.score.toLocaleString() }) }))
+    }
+    else if (snapshot.totalClearedCells > previous.cleared) {
+      const chain = Math.max(1, snapshot.lastWaveCount)
+      queueMicrotask(() => setFxCue({ id: `chain-${snapshot.revision}`, kind: 'chain', eyebrow: t('fx.energyBurst', 'ENERGY BURST'), title: t('fx.chain', `${chain} CHAIN!`, { chain }), detail: t('fx.cellsCleared', `${snapshot.totalClearedCells - previous.cleared}셀 방전`, { count: snapshot.totalClearedCells - previous.cleared }) }))
+    }
+    else if (snapshot.status === 'playing' && previous.status !== 'playing') {
+      queueMicrotask(() => setFxCue({ id: `start-${snapshot.revision}`, kind: 'start', eyebrow: t('fx.ready', 'READY'), title: t('fx.go', 'GO!'), detail: t('fx.stackEnergy', '에너지를 쌓으세요') }))
+    }
+    previousFxState.current = { status: snapshot.status, cleared: snapshot.totalClearedCells }
+  }, [snapshot, t])
+
   const restart = () => command('restart')
 
   return (
@@ -77,7 +95,7 @@ export function GravityStackPage() {
 
           <GravityStackHud snapshot={snapshot} bestScore={bestScore} />
 
-          <div className="board-frame" tabIndex={0} aria-label={t('single.board', 'Gravity Stack 게임 보드. 방향키와 스페이스로 조작합니다.')}>
+          <div className="board-frame" data-fx={fxCue?.kind ?? ''} tabIndex={0} aria-label={t('single.board', 'Gravity Stack 게임 보드. 방향키와 스페이스로 조작합니다.')}>
             <GravityStackCanvas engine={engine} onSnapshot={publish} />
             {snapshot.status === 'ready' && (
               <div className="game-overlay" role="dialog" aria-modal="true" aria-labelledby="ready-title">
@@ -99,6 +117,7 @@ export function GravityStackPage() {
               </div>
             )}
             {snapshot.status === 'gameOver' && <GravityStackResults snapshot={snapshot} onRestart={restart} />}
+            <ArcadeFxOverlay cue={fxCue} />
           </div>
 
           <GravityStackControls onCommand={command} status={snapshot.status} />
