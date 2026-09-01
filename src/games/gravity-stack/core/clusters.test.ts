@@ -80,9 +80,9 @@ describe('score and speed', () => {
     expect(calculateLevel(91)).toBe(4)
   })
 
-  it('never drops faster than 160ms', () => {
+  it('accelerates gently and never drops faster than 300ms', () => {
     expect(calculateDropInterval(1)).toBe(900)
-    expect(calculateDropInterval(4)).toBe(690)
-    expect(calculateDropInterval(100)).toBe(160)
+    expect(calculateDropInterval(4)).toBe(825)
+    expect(calculateDropInterval(100)).toBe(300)
   })
 })

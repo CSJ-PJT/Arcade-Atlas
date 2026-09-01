@@ -14,6 +14,7 @@ test('direct Arcade home and catalog navigation work', async ({ page }) => {
   const runtime = observeRuntime(page)
   await page.goto('/arcade/')
   await expect(page.getByTestId('arcade-home')).toBeVisible()
+  await expect(page.getByRole('button', { name: /음악/ })).toHaveAttribute('data-music-track', '/arcade/audio/gravity-lobby.mp3')
   await expect(page.getByTestId('game-card-orbit-snake')).toContainText('준비 중')
   await page.getByRole('link', { name: 'Gravity Stack 플레이' }).click()
   await expect(page).toHaveURL(/\/arcade\/stack$/)
@@ -28,6 +29,7 @@ test('direct stack route supports keyboard, touch, pause, resume, and restart', 
   const game = page.getByTestId('gravity-stack-page')
   await page.getByRole('button', { name: '게임 시작' }).click()
   await expect(game).toHaveAttribute('data-game-status', 'playing')
+  await expect(page.getByRole('button', { name: /음악/ })).toHaveAttribute('data-music-track', 'game-pool')
   const initialX = Number(await game.getAttribute('data-active-x'))
   await page.keyboard.press('ArrowLeft')
   await expect.poll(async () => Number(await game.getAttribute('data-active-x'))).toBe(initialX - 1)
@@ -117,6 +119,15 @@ test('two browsers create, join, ready and start the same seeded match', async (
   expect(guestRuntime.failedRequests).toEqual([])
   await hostContext.close()
   await guestContext.close()
+})
+
+test('host can create an item-mode room while normal mode remains available', async ({ page }) => {
+  await page.goto('/arcade/stack/multi')
+  await expect(page.getByTestId('multiplayer-page')).toHaveAttribute('data-connection', 'open')
+  await page.getByLabel('표시 이름').fill('Item Host')
+  await page.getByLabel('아이템 모드').check()
+  await page.getByRole('button', { name: '새 방 만들기' }).click()
+  await expect(page.getByTestId('multiplayer-lobby')).toContainText('아이템 모드')
 })
 
 test('a disconnected player resumes the same room and match within the grace window', async ({ browser }) => {

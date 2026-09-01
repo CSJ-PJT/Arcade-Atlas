@@ -30,6 +30,24 @@ describe('multiplayer room store', () => {
     expect(() => store.joinRoom(room.code, 'overflow')).toThrow('ROOM_FULL')
   })
 
+  it('keeps normal rooms item-free and validates item attacks on the server', () => {
+    const { store } = deterministicStore()
+    const host = store.createRoom('Host', 'items')
+    const guest = store.joinRoom(host.room.code, 'Guest')
+    store.setReady(host.room, host.player.id, true)
+    store.setReady(host.room, guest.player.id, true)
+    const match = store.start(host.room)
+    store.updateProgress(host.room, host.player.id, { matchId: match.matchId, score: 200, level: 1, cleared: 24, gameStatus: 'playing' })
+    expect(host.player.items).toEqual({ pulse: 1, shield: 1 })
+    const shield = store.useItem(host.room, host.player.id, 'shield')
+    expect(shield?.targetId).toBe(host.player.id)
+    expect(host.player.shielded).toBe(true)
+    const pulse = store.useItem(host.room, host.player.id, 'pulse', guest.player.id)
+    expect(pulse?.blocked).toBe(false)
+    expect(host.player.items).toEqual({ pulse: 0, shield: 0 })
+    expect(store.publicRoom(host.room).mode).toBe('items')
+  })
+
   it('rejects score regression and stale match progress', () => {
     const { store } = deterministicStore()
     const { room, player } = store.createRoom('Host')

@@ -123,7 +123,7 @@ wss.on('connection', (socket, request) => {
     try {
       if (message.type === 'create') {
         if (session.room) return fail(socket, 'ALREADY_IN_ROOM')
-        const { room, player } = store.createRoom(message.name)
+        const { room, player } = store.createRoom(message.name, message.mode)
         attachSession(socket, session, room, player)
         send(socket, { type: 'joined', playerId: player.id, reconnectToken: player.reconnectToken, room: store.publicRoom(room) })
         queuePersist()
@@ -169,6 +169,14 @@ wss.on('connection', (socket, request) => {
         if (!store.updateProgress(session.room, session.playerId, message)) return fail(socket, 'INVALID_PROGRESS')
         broadcastRoom(session.room)
         if (session.room.status === 'finished') broadcast(session.room, { type: 'matchEnd', room: store.publicRoom(session.room) })
+        queuePersist()
+        return
+      }
+      if (message.type === 'useItem') {
+        const event = store.useItem(session.room, session.playerId, message.itemType, message.targetId)
+        if (!event) return fail(socket, 'INVALID_ITEM')
+        broadcast(session.room, { type: 'itemEvent', ...event })
+        broadcastRoom(session.room)
         queuePersist()
         return
       }

@@ -9,6 +9,7 @@ import { GravityStackHud } from './components/GravityStackHud'
 import { GravityStackResults } from './components/GravityStackResults'
 import { readBestScore, writeBestScore } from './localBest'
 import './gravity-stack.css'
+import { useMusicScope } from '../../audio/MusicProvider'
 
 function createSeed(): string {
   try {
@@ -32,6 +33,7 @@ export function GravityStackPage() {
   const engine = useMemo(() => new GravityStackEngine(createSeed()), [])
   const [snapshot, setSnapshot] = useState(() => engine.getSnapshot())
   const [bestScore, setBestScore] = useState(() => readBestScore())
+  useMusicScope(snapshot.status === 'ready' ? 'lobby' : 'game')
   const readyButtonRef = useRef<HTMLButtonElement>(null)
   const pauseButtonRef = useRef<HTMLButtonElement>(null)
 

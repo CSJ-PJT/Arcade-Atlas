@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { ArcadeHomePage } from '../pages/ArcadeHomePage'
 import { NotFoundPage } from '../pages/NotFoundPage'
+import { MusicProvider } from '../audio/MusicProvider'
 
 const GravityStackPage = lazy(async () => {
   const module = await import('../games/gravity-stack/GravityStackPage')
@@ -15,7 +16,7 @@ const MultiplayerGravityStackPage = lazy(async () => {
 
 export function App() {
   return (
-    <BrowserRouter basename="/arcade">
+    <BrowserRouter basename="/arcade"><MusicProvider>
       <Routes>
         <Route path="/" element={<ArcadeHomePage />} />
         <Route
@@ -36,6 +37,6 @@ export function App() {
         />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
-    </BrowserRouter>
+    </MusicProvider></BrowserRouter>
   )
 }

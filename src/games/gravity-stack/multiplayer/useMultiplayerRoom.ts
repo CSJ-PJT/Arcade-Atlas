@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { MatchStart, MultiplayerRoom } from './types'
+import type { ItemEvent, ItemType, MatchStart, MultiplayerMode, MultiplayerRoom } from './types'
 
 const PROTOCOL_VERSION = 1
 const SESSION_KEY = 'arcade:gravity-stack:multiplayer-session:v1'
@@ -40,6 +40,7 @@ export function useMultiplayerRoom() {
   const [playerId, setPlayerId] = useState<string | null>(initialCredentials?.playerId ?? null)
   const [match, setMatch] = useState<MatchStart | null>(null)
   const [error, setError] = useState('')
+  const [itemEvent, setItemEvent] = useState<ItemEvent | null>(null)
 
   useEffect(() => {
     let disposed = false
@@ -99,6 +100,7 @@ export function useMultiplayerRoom() {
           setMatch(null)
         }
         else if (message.type === 'serverRestart') setConnection('reconnecting')
+        else if (message.type === 'itemEvent') setItemEvent(message as unknown as ItemEvent)
         else if (message.type === 'error') {
           const code = String(message.code)
           if (code === 'RESUME_FAILED') {
@@ -132,18 +134,19 @@ export function useMultiplayerRoom() {
     return true
   }, [])
 
-  const createRoom = useCallback((name: string) => send({ type: 'create', name }), [send])
+  const createRoom = useCallback((name: string, mode: MultiplayerMode) => send({ type: 'create', name, mode }), [send])
   const joinRoom = useCallback((code: string, name: string) => send({ type: 'join', code, name }), [send])
   const setReady = useCallback((ready: boolean) => send({ type: 'ready', ready }), [send])
   const startMatch = useCallback(() => send({ type: 'start' }), [send])
   const rematch = useCallback(() => send({ type: 'rematch' }), [send])
+  const useItem = useCallback((itemType: ItemType, targetId?: string) => send({ type: 'useItem', itemType, targetId }), [send])
   const sendProgress = useCallback((progress: { matchId: string; score: number; level: number; cleared: number; gameStatus: string }) => {
     const message = { type: 'progress', protocol: PROTOCOL_VERSION, ...progress }
     pendingProgressRef.current = message
     return send(message)
   }, [send])
 
-  return { connection, room, playerId, match, error, createRoom, joinRoom, setReady, startMatch, rematch, sendProgress }
+  return { connection, room, playerId, match, itemEvent, error, createRoom, joinRoom, setReady, startMatch, rematch, useItem, sendProgress }
 }
 
 function errorMessage(code: string): string {
@@ -156,6 +159,7 @@ function errorMessage(code: string): string {
     PROTOCOL_MISMATCH: '게임 버전이 맞지 않습니다. 페이지를 새로고침해 주세요.',
     RATE_LIMITED: '요청이 너무 많아 연결을 잠시 쉬고 있습니다.',
     RESUME_FAILED: '이전 방의 복귀 시간이 만료되었습니다. 새 방에 참가해 주세요.',
+    INVALID_ITEM: '지금은 해당 아이템을 사용할 수 없습니다.',
   }
   return messages[code] ?? '요청을 처리하지 못했습니다.'
 }

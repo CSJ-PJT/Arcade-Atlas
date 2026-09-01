@@ -7,5 +7,5 @@ export function calculateLevel(totalClearedCells: number): number {
 }
 
 export function calculateDropInterval(level: number): number {
-  return Math.max(160, 900 - (Math.max(1, level) - 1) * 70)
+  return Math.max(300, 900 - (Math.max(1, level) - 1) * 25)
 }

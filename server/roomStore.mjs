@@ -5,6 +5,9 @@ export const MAX_PLAYERS = 4
 export const RECONNECT_GRACE_MS = 30_000
 export const ROOM_IDLE_TTL_MS = 2 * 60 * 60 * 1000
 export const SNAPSHOT_VERSION = 1
+export const ITEM_CHARGE_CELLS = 12
+
+function cleanMode(value) { return value === 'items' ? 'items' : 'normal' }
 
 function createCode(random = randomBytes) {
   const bytes = random(6)
@@ -32,6 +35,8 @@ function publicPlayer(player) {
     level: player.level,
     cleared: player.cleared,
     gameStatus: player.gameStatus,
+    items: { ...player.items },
+    shielded: player.shielded,
   }
 }
 
@@ -43,14 +48,14 @@ export class RoomStore {
     this.id = id
   }
 
-  createRoom(name) {
+  createRoom(name, mode = 'normal') {
     let code
     do code = createCode(this.random)
     while (this.rooms.has(code))
     const player = this.#newPlayer(name, true)
     const time = this.now()
     const room = {
-      code, status: 'lobby', seed: '', matchId: '', startsAt: 0,
+      code, mode: cleanMode(mode), status: 'lobby', seed: '', matchId: '', startsAt: 0, itemSequence: 0,
       players: new Map([[player.id, player]]), createdAt: time, updatedAt: time,
     }
     this.rooms.set(code, room)
@@ -105,6 +110,9 @@ export class RoomStore {
       player.level = 1
       player.cleared = 0
       player.gameStatus = 'playing'
+      player.items = { pulse: 0, shield: 0 }
+      player.itemMilestone = 0
+      player.shielded = false
     }
     this.#touch(room)
     return this.matchState(room)
@@ -127,9 +135,37 @@ export class RoomStore {
     player.level = level
     player.cleared = cleared
     player.gameStatus = payload.gameStatus === 'gameOver' ? 'gameOver' : 'playing'
+    if (room.mode === 'items') {
+      const milestone = Math.floor(cleared / ITEM_CHARGE_CELLS)
+      while (player.itemMilestone < milestone) {
+        const item = room.itemSequence % 2 === 0 ? 'pulse' : 'shield'
+        player.items[item] = Math.min(3, player.items[item] + 1)
+        player.itemMilestone += 1
+        room.itemSequence += 1
+      }
+    }
     if ([...room.players.values()].every((entry) => entry.gameStatus === 'gameOver')) room.status = 'finished'
     this.#touch(room)
     return true
+  }
+
+  useItem(room, playerId, itemType, targetId) {
+    if (room.mode !== 'items' || room.status !== 'playing') return null
+    const player = room.players.get(playerId)
+    if (!player?.connected || !['pulse', 'shield'].includes(itemType) || player.items[itemType] < 1) return null
+    if (itemType === 'shield') {
+      player.items.shield -= 1
+      player.shielded = true
+      this.#touch(room)
+      return { eventId: this.id(), matchId: room.matchId, itemType, sourceId: playerId, targetId: playerId, blocked: false }
+    }
+    const target = room.players.get(String(targetId ?? ''))
+    if (!target?.connected || target.id === playerId || target.gameStatus !== 'playing') return null
+    player.items.pulse -= 1
+    const blocked = target.shielded
+    if (blocked) target.shielded = false
+    this.#touch(room)
+    return { eventId: this.id(), matchId: room.matchId, itemType, sourceId: playerId, targetId: target.id, blocked }
   }
 
   rematch(room, playerId) {
@@ -145,6 +181,9 @@ export class RoomStore {
       entry.level = 1
       entry.cleared = 0
       entry.gameStatus = 'ready'
+      entry.items = { pulse: 0, shield: 0 }
+      entry.itemMilestone = 0
+      entry.shielded = false
     }
     this.#touch(room)
     return true
@@ -203,6 +242,7 @@ export class RoomStore {
   publicRoom(room) {
     return {
       code: room.code,
+      mode: room.mode,
       status: room.status,
       matchId: room.matchId || null,
       players: [...room.players.values()].map(publicPlayer),
@@ -232,11 +272,13 @@ export class RoomStore {
           level: Number.isSafeInteger(entry.level) ? entry.level : 1,
           cleared: Number.isSafeInteger(entry.cleared) ? entry.cleared : 0,
           gameStatus: entry.gameStatus === 'gameOver' ? 'gameOver' : entry.gameStatus === 'playing' ? 'playing' : 'ready',
+          items: { pulse: Number(entry.items?.pulse) || 0, shield: Number(entry.items?.shield) || 0 },
+          itemMilestone: Number(entry.itemMilestone) || 0, shielded: Boolean(entry.shielded),
         })
       }
       if (players.size === 0) continue
       const room = {
-        code: this.#normalizeCode(source.code),
+        code: this.#normalizeCode(source.code), mode: cleanMode(source.mode), itemSequence: Number(source.itemSequence) || 0,
         status: ['lobby', 'playing', 'finished'].includes(source.status) ? source.status : 'lobby',
         seed: String(source.seed ?? ''), matchId: String(source.matchId ?? ''),
         startsAt: Number(source.startsAt) || 0, players,
@@ -252,6 +294,7 @@ export class RoomStore {
       id: this.id(), reconnectToken: this.random(24).toString('base64url'), name: cleanName(name),
       isHost, ready: false, connected: true, disconnectedAt: null,
       score: 0, level: 1, cleared: 0, gameStatus: 'ready',
+      items: { pulse: 0, shield: 0 }, itemMilestone: 0, shielded: false,
     }
   }
 

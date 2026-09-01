@@ -7,6 +7,14 @@
 .multiplayer-entry__actions { display: grid; gap: 16px; margin-top: 18px; }
 .join-controls { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10px; }
 .connection-note { font-size: .78rem; }
+.mode-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 18px 0 0; padding: 0; border: 0; }
+.mode-selector legend { margin-bottom: 8px; color: var(--muted); font-size: .76rem; font-weight: 800; }
+.mode-selector label { position: relative; display: block; }
+.mode-selector input { position: absolute; opacity: 0; }
+.mode-selector span { display: grid; gap: 5px; min-height: 74px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.mode-selector input:checked + span { border-color: var(--cyan); background: rgba(109,226,255,.08); }
+.mode-selector strong { color: #fff; }
+.mode-badge { display: inline-flex; padding: 6px 10px; border: 1px solid var(--cyan); border-radius: 999px; color: var(--cyan) !important; }
 .reconnect-banner { position: sticky; top: 8px; z-index: 20; width: min(720px, 100%); margin: 12px auto 0; padding: 10px 14px; border: 1px solid var(--amber); border-radius: 10px; color: #fff2c8; background: rgba(79, 54, 5, .94); text-align: center; }
 .reconnect-panel { text-align: center; }
 .form-error { padding: 10px 12px; border: 1px solid #ff6c8f; border-radius: 10px; color: #ffdce5 !important; background: rgba(130, 20, 50, .25); }
@@ -22,5 +30,11 @@
 .player-standings li span { display: flex; flex-direction: column; gap: 3px; }
 .player-standings li span:nth-child(2) { align-items: end; color: var(--muted); font-size: .74rem; }
 .player-standings small, .player-standings em { color: var(--amber); font-size: .58rem; font-style: normal; letter-spacing: .1em; }
+.item-panel { display: grid; gap: 8px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.item-panel h3, .item-panel p { margin: 0; }
+.item-panel p { color: var(--muted); font-size: .74rem; }
+.item-panel button { min-height: 44px; border: 1px solid var(--line); border-radius: 10px; background: #0b2033; cursor: pointer; }
+.item-panel button:disabled { opacity: .45; cursor: not-allowed; }
+.item-panel strong { color: var(--amber); font-size: .78rem; }
 @media (max-width: 900px) { .multiplayer-match { grid-template-columns: 1fr; } .multiplayer-scoreboard { order: -1; } .multiplayer-scoreboard .player-standings { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .multiplayer-page { width: min(100% - 12px, 1180px); padding-top: 6px; } .multiplayer-entry, .multiplayer-lobby { margin-top: 18px; border-radius: 16px; } .join-controls { grid-template-columns: 1fr; } .multiplayer-scoreboard { padding: 10px; } .multiplayer-scoreboard .player-standings { grid-template-columns: 1fr; } .player-standings li { min-height: 48px; } }
+@media (max-width: 560px) { .multiplayer-page { width: min(100% - 12px, 1180px); padding-top: 6px; } .multiplayer-entry, .multiplayer-lobby { margin-top: 18px; border-radius: 16px; } .join-controls, .mode-selector { grid-template-columns: 1fr; } .multiplayer-scoreboard { padding: 10px; } .multiplayer-scoreboard .player-standings { grid-template-columns: 1fr; } .player-standings li { min-height: 48px; } }

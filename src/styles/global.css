@@ -19,6 +19,7 @@ button, a { font: inherit; }
 button { color: inherit; }
 a { color: inherit; }
 button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+.music-toggle { position: fixed; right: 12px; top: 70px; z-index: 100; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; color: #e9f4ff; background: rgba(6,16,29,.94); cursor: pointer; }
 
 body::before {
   content: "";

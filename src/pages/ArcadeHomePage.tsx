@@ -2,8 +2,10 @@ import { Link } from 'react-router-dom'
 import { gameCatalog } from '../app/gameCatalog'
 import { AtlasBrand } from '../components/AtlasBrand'
 import { readBestScore } from '../games/gravity-stack/localBest'
+import { useMusicScope } from '../audio/MusicProvider'
 
 export function ArcadeHomePage() {
+  useMusicScope('lobby')
   const bestScore = readBestScore()
   return (
     <main className="arcade-shell" data-testid="arcade-home">
