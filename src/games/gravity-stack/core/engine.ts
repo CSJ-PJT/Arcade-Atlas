@@ -4,8 +4,8 @@ import { applyColumnGravity, cloneBoard, createEmptyBoard, resolveCascades } fro
 import { calculateDropInterval, calculateLevel } from './scoring'
 import { BOARD_HEIGHT, BOARD_WIDTH, type Board, type EngineCheckpoint, type EngineSnapshot, type GameCommand, type GameStatus, type Piece } from './types'
 
-export const GRAVITY_STACK_RULES_VERSION = 'gravity-stack-rules-v3'
-export const ENGINE_SNAPSHOT_VERSION = 2
+export const GRAVITY_STACK_RULES_VERSION = 'gravity-stack-rules-v4'
+export const ENGINE_SNAPSHOT_VERSION = 3
 
 interface EngineOptions {
   initialBoard?: Board
@@ -98,6 +98,25 @@ export class GravityStackEngine {
     let changed = false
     for (let index = 0; index < count && this.status === 'playing'; index += 1) changed = this.stepDown() || changed
     return changed
+  }
+
+  addGarbageRow(gapColumn: number): boolean {
+    if (!Number.isSafeInteger(gapColumn) || gapColumn < 0 || gapColumn >= BOARD_WIDTH || this.status !== 'playing') return false
+    if (this.board[0].some(Boolean)) {
+      this.activePiece = null
+      this.status = 'gameOver'
+      this.bumpRevision()
+      return true
+    }
+    this.board = this.board.slice(1)
+    this.board.push(Array.from({ length: BOARD_WIDTH }, (_, x) => x === gapColumn ? null : { energy: 'terra' as const, symbol: '×', obstacle: true }))
+    if (this.activePiece) this.activePiece = { ...this.activePiece, y: this.activePiece.y - 1 }
+    if (this.activePiece && this.collides(this.activePiece)) {
+      this.activePiece = null
+      this.status = 'gameOver'
+    }
+    this.bumpRevision()
+    return true
   }
 
   start(): boolean {

@@ -17,6 +17,7 @@ export type GameStatus = 'ready' | 'playing' | 'paused' | 'gameOver'
 export interface Cell {
   energy: Energy
   symbol: string
+  obstacle?: boolean
 }
 
 export interface PieceCell extends Cell {

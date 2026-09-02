@@ -1,7 +1,7 @@
 import { GravityStackEngine } from '../src/games/gravity-stack/core/engine.ts'
 import { SeededRng } from '../src/games/gravity-stack/core/rng.ts'
 
-export const BOT_ENGINE_VERSION = 'atlas-bot-engine-v3'
+export const BOT_ENGINE_VERSION = 'atlas-bot-engine-v4'
 export const BOT_MOVE_INTERVALS = { rookie: 1450, pilot: 1050, ace: 820 }
 
 function boardPenalty(board) {
@@ -19,10 +19,10 @@ function boardPenalty(board) {
   return holes * 42 + Math.max(...heights) * 7 + bumpiness * 3 + heights.reduce((sum, height) => sum + height, 0)
 }
 
-function candidatePlacements(engine) {
+function candidatePlacements(engine, allowRotation = true) {
   const origin = engine.getCheckpoint()
   const candidates = []
-  for (let rotations = 0; rotations < 4; rotations += 1) {
+  for (let rotations = 0; rotations < (allowRotation ? 4 : 1); rotations += 1) {
     for (let shift = -11; shift <= 11; shift += 1) {
       const simulation = new GravityStackEngine(engine.seed)
       simulation.restoreCheckpoint(origin)
@@ -52,9 +52,9 @@ export class GravityBotEngine {
     this.moves = 0
   }
 
-  step() {
+  step({ allowRotation = true } = {}) {
     if (this.engine.getSnapshot().status !== 'playing') return this.snapshot()
-    const candidates = candidatePlacements(this.engine)
+    const candidates = candidatePlacements(this.engine, allowRotation)
     if (candidates.length === 0) return this.snapshot()
     let pool = 1
     if (this.difficulty === 'rookie') pool = this.decisionRng.next() < 0.22 ? Math.min(5, candidates.length) : Math.min(3, candidates.length)
@@ -67,6 +67,11 @@ export class GravityBotEngine {
 
   forceDropCells(count) {
     this.engine.forceDropCells(count)
+    return this.snapshot()
+  }
+
+  addGarbageRow(gapColumn) {
+    this.engine.addGarbageRow(gapColumn)
     return this.snapshot()
   }
 

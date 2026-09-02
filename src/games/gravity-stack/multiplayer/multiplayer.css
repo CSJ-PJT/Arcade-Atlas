@@ -44,5 +44,8 @@
 .item-panel button { min-height: 44px; border: 1px solid var(--line); border-radius: 10px; background: #0b2033; cursor: pointer; }
 .item-panel button:disabled { opacity: .45; cursor: not-allowed; }
 .item-panel strong { color: var(--amber); font-size: .78rem; }
+.item-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.active-effects { display: flex; flex-wrap: wrap; gap: 6px; }
+.active-effects strong { padding: 4px 8px; border: 1px solid currentColor; border-radius: 999px; }
 @media (max-width: 900px) { .multiplayer-match { grid-template-columns: 1fr; } .multiplayer-scoreboard { order: -1; } .multiplayer-scoreboard .player-standings { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .multiplayer-page { width: min(100% - 12px, 1180px); padding-top: 6px; } .multiplayer-entry, .multiplayer-lobby { margin-top: 18px; border-radius: 16px; } .join-controls, .mode-selector, .bot-controls { grid-template-columns: 1fr; } .multiplayer-scoreboard { padding: 10px; } .multiplayer-scoreboard .player-standings { grid-template-columns: 1fr; } .player-standings li { grid-template-columns: 1fr auto auto; min-height: 48px; } .opponent-mini { display: none; } }

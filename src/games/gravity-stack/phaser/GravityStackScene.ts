@@ -125,6 +125,18 @@ export class GravityStackScene extends Phaser.Scene {
         graphics.strokeRect(px, py, cellSize, cellSize)
         const cell = cells[y][x]
         if (!cell) continue
+        if (cell.obstacle) {
+          graphics.fillStyle(0x607386, 0.96)
+          graphics.fillRoundedRect(px + 3, py + 3, cellSize - 6, cellSize - 6, 5)
+          graphics.lineStyle(3, 0xffd166, 0.9)
+          graphics.beginPath()
+          graphics.moveTo(px + 9, py + 9)
+          graphics.lineTo(px + 19, py + 19)
+          graphics.moveTo(px + 19, py + 9)
+          graphics.lineTo(px + 9, py + 19)
+          graphics.strokePath()
+          continue
+        }
         const color = ENERGY_COLORS[cell.energy]
         graphics.fillStyle(color, 0.92)
         graphics.fillRoundedRect(px + 3, py + 3, cellSize - 6, cellSize - 6, 6)

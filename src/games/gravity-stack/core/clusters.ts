@@ -17,7 +17,7 @@ export function findDischargeGroups(board: Board): DischargeGroup[] {
   for (let y = 0; y < BOARD_HEIGHT; y += 1) {
     for (let x = 0; x < BOARD_WIDTH; x += 1) {
       const origin = board[y]?.[x]
-      if (!origin || visited[y][x]) continue
+      if (!origin || origin.obstacle || visited[y][x]) continue
       const cells = [{ x, y }]
       visited[y][x] = true
       for (let cursor = 0; cursor < cells.length; cursor += 1) {
@@ -26,7 +26,7 @@ export function findDischargeGroups(board: Board): DischargeGroup[] {
           const nextX = current.x + dx
           const nextY = current.y + dy
           if (nextX < 0 || nextX >= BOARD_WIDTH || nextY < 0 || nextY >= BOARD_HEIGHT) continue
-          if (visited[nextY][nextX] || board[nextY][nextX]?.energy !== origin.energy) continue
+          if (visited[nextY][nextX] || board[nextY][nextX]?.obstacle || board[nextY][nextX]?.energy !== origin.energy) continue
           visited[nextY][nextX] = true
           cells.push({ x: nextX, y: nextY })
         }

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 
-export type ArcadeFxKind = 'start' | 'chain' | 'pulse' | 'shield' | 'blocked' | 'finish'
+export type ArcadeFxKind = 'start' | 'chain' | 'pulse' | 'shield' | 'blocked' | 'garbage' | 'rotationLock' | 'previewJam' | 'speedUp' | 'finish'
 
 export interface ArcadeFxCue {
   id: string

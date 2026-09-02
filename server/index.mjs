@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { WebSocketServer, WebSocket } from 'ws'
 import { GravityStackEngine, GRAVITY_STACK_RULES_VERSION } from '../src/games/gravity-stack/core/engine.ts'
-import { RoomStore } from './roomStore.mjs'
+import { ATTACK_ITEMS, ITEM_SEQUENCE, RoomStore } from './roomStore.mjs'
 import { BOT_ENGINE_VERSION, BOT_MOVE_INTERVALS, GravityBotEngine } from './gravityBot.mjs'
 import { MAX_CONNECTIONS, MAX_CONNECTIONS_PER_ADDRESS, MAX_ROOMS, MAX_ROOM_CREATIONS_PER_WINDOW, MAX_TOTAL_BOTS, ROOM_CREATION_WINDOW_MS, SlidingWindowLimiter, clientAddress } from './security.mjs'
 import { validateAtlasAccount } from './atlasAuth.mjs'
@@ -134,33 +134,36 @@ function publishHumanState(run, force = false) {
 function letBotUseItem(room, player) {
   let event = null
   if (player.items.shield > 0 && !player.shielded) event = store.useItem(room, player.id, 'shield')
-  else if (player.items.pulse > 0) {
+  else {
+    const itemType = ITEM_SEQUENCE.find((item) => ATTACK_ITEMS.has(item) && player.items[item] > 0)
     const opponents = [...room.players.values()].filter((entry) => entry.id !== player.id && entry.connected && entry.gameStatus === 'playing')
     const target = opponents.sort((a, b) => (a.id === player.lastPulseTarget) - (b.id === player.lastPulseTarget) || b.score - a.score)[0]
-    if (target) event = store.useItem(room, player.id, 'pulse', target.id)
+    if (target && itemType) event = store.useItem(room, player.id, itemType, target.id)
   }
   if (event) {
-    if (event.itemType === 'pulse') player.lastPulseTarget = event.targetId
-    applyPulse(room, event)
+    if (ATTACK_ITEMS.has(event.itemType)) player.lastPulseTarget = event.targetId
+    applyItemEvent(room, event)
     broadcast(room, { type: 'itemEvent', ...event })
   }
 }
 
-function applyPulse(room, event) {
-  if (event.itemType !== 'pulse' || event.blocked) return
+function applyItemEvent(room, event) {
+  if (event.blocked || !['pulse', 'garbage'].includes(event.itemType)) return
   const target = room.players.get(event.targetId)
   if (!target) return
   if (target.isBot) {
     const run = botRuns.get(target.id)
     if (run) {
-      run.engine.forceDropCells(2)
+      if (event.itemType === 'pulse') run.engine.forceDropCells(2)
+      else run.engine.addGarbageRow(event.gapColumn)
       store.applyEngineState(room, target.id, run.engine.checkpoint(), { botMoves: run.engine.moves })
     }
   }
   else {
     const run = humanRuns.get(target.id)
     if (run) {
-      run.engine.forceDropCells(2)
+      if (event.itemType === 'pulse') run.engine.forceDropCells(2)
+      else run.engine.addGarbageRow(event.gapColumn)
       publishHumanState(run, true)
     }
   }
@@ -290,6 +293,8 @@ wss.on('connection', (socket, request) => {
         const run = humanRuns.get(session.playerId)
         if (!run) return fail(socket, 'ENGINE_NOT_READY')
         if (!commands.has(message.command) || !store.acceptInput(session.room, session.playerId, message.sequence)) return fail(socket, 'INVALID_INPUT')
+        const player = session.room.players.get(session.playerId)
+        if (message.command === 'rotate' && store.effectActive(player, 'rotationLockUntil')) return fail(socket, 'ROTATION_LOCKED')
         const minimumInterval = message.command === 'hardDrop' ? 70 : 25
         if (now - session.lastCommandAt < minimumInterval) {
           fail(socket, 'INPUT_RATE_LIMITED')
@@ -304,7 +309,7 @@ wss.on('connection', (socket, request) => {
       if (message.type === 'useItem') {
         const event = store.useItem(session.room, session.playerId, message.itemType, message.targetId)
         if (!event) return fail(socket, 'INVALID_ITEM')
-        applyPulse(session.room, event)
+        applyItemEvent(session.room, event)
         broadcast(session.room, { type: 'itemEvent', ...event })
         broadcastRoom(session.room)
         queuePersist()
@@ -385,8 +390,9 @@ const botInterval = setInterval(() => {
     const player = run.room.players.get(run.playerId)
     if (store.rooms.get(run.room.code) !== run.room || !player || run.room.status !== 'playing' || player.gameStatus === 'gameOver') { botRuns.delete(id); continue }
     if (now < run.nextAt) continue
-    const snapshot = run.engine.step()
-    run.nextAt = now + BOT_MOVE_INTERVALS[player.botDifficulty]
+    const snapshot = run.engine.step({ allowRotation: !store.effectActive(player, 'rotationLockUntil', now) })
+    const speedMultiplier = store.effectActive(player, 'speedUpUntil', now) ? 0.55 : 1
+    run.nextAt = now + BOT_MOVE_INTERVALS[player.botDifficulty] * speedMultiplier
     if (!store.applyEngineState(run.room, player.id, run.engine.checkpoint(), { botMoves: snapshot.moves })) { botRuns.delete(id); continue }
     letBotUseItem(run.room, player)
     broadcastRoom(run.room)
@@ -403,7 +409,8 @@ const humanInterval = setInterval(() => {
     if (store.rooms.get(run.room.code) !== run.room || !player || run.room.status !== 'playing' || player.gameStatus === 'gameOver') { humanRuns.delete(id); continue }
     if (now < run.room.startsAt) continue
     if (run.engine.getSnapshot().status === 'ready') run.engine.start()
-    const delta = Math.max(0, Math.min(250, now - run.lastAt))
+    const speedMultiplier = store.effectActive(player, 'speedUpUntil', now) ? 1.8 : 1
+    const delta = Math.max(0, Math.min(250, now - run.lastAt)) * speedMultiplier
     run.lastAt = now
     if (run.engine.tick(delta)) publishHumanState(run)
     else if (run.lastRevision < 0) publishHumanState(run, true)

@@ -80,6 +80,26 @@ describe('GravityStackEngine', () => {
     expect(filledCount(snapshot.board)).toBe(2)
   })
 
+  it('adds a server-authoritative obstacle row with one deterministic gap', () => {
+    const engine = new GravityStackEngine('garbage', { pieceSequence: [duo, horizontal] })
+    engine.start()
+    expect(engine.addGarbageRow(4)).toBe(true)
+    const bottom = engine.getSnapshot().board[17]
+    expect(bottom.filter((next) => next?.obstacle)).toHaveLength(11)
+    expect(bottom[4]).toBeNull()
+    expect(bottom[0]?.symbol).toBe('×')
+  })
+
+  it('ends the run when an obstacle row would push occupied cells past the ceiling', () => {
+    const board = createEmptyBoard()
+    board[0][0] = { energy: 'terra', symbol: '■' }
+    const engine = new GravityStackEngine('garbage-overflow', { initialBoard: board, pieceSequence: [duo, horizontal] })
+    engine.start()
+    expect(engine.getSnapshot().status).toBe('playing')
+    expect(engine.addGarbageRow(4)).toBe(true)
+    expect(engine.getSnapshot().status).toBe('gameOver')
+  })
+
   it('enters game over when the spawn area is occupied', () => {
     const board = createEmptyBoard()
     board[0][5] = { energy: 'terra', symbol: ENERGY_SYMBOLS.terra }

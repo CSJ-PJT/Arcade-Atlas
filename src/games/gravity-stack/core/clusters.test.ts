@@ -40,6 +40,13 @@ describe('energy clusters', () => {
     expect(resolveCascades(board).clearedCells).toBe(0)
   })
 
+  it('does not discharge obstacle cells as an energy cluster', () => {
+    const board = createEmptyBoard()
+    for (let x = 0; x < 6; x += 1) board[17][x] = { energy: 'terra', symbol: '×', obstacle: true }
+    expect(findDischargeGroups(board)).toHaveLength(0)
+    expect(resolveCascades(board).clearedCells).toBe(0)
+  })
+
   it('removes an orthogonally connected group of six', () => {
     const board = createEmptyBoard()
     for (let x = 0; x < 6; x += 1) put(board, x, 17, 'nova')

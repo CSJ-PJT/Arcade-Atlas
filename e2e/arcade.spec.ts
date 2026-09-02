@@ -175,6 +175,16 @@ test('host can create an item-mode room while normal mode remains available', as
   await page.getByLabel('아이템 모드').check()
   await page.getByRole('button', { name: '새 방 만들기' }).click()
   await expect(page.getByTestId('multiplayer-lobby')).toContainText('아이템 모드')
+  await page.getByRole('button', { name: 'Atlas AI 추가' }).click()
+  await page.getByRole('button', { name: '준비 완료' }).click()
+  await page.getByRole('button', { name: '동시 시작' }).click()
+  await expect(page.getByTestId('multiplayer-match')).toHaveAttribute('data-game-status', 'playing', { timeout: 6000 })
+  await expect(page.getByRole('button', { name: /방어막/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /중력 펄스/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /방해 블록/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /회전 잠금/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /센서 교란/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /속도 증가/ })).toBeVisible()
 })
 
 test('host can add a real AI player that advances its own board', async ({ page }) => {

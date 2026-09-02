@@ -189,6 +189,7 @@ function errorMessage(code: string, t: (key: string, fallback: string) => string
     ROOM_CREATION_LIMITED: '짧은 시간에 방을 너무 많이 만들었습니다. 잠시 후 다시 시도해 주세요.',
     BOT_CAPACITY_REACHED: '현재 AI 플레이어 수용량이 가득 찼습니다.',
     AUTH_REQUIRED: 'Atlas 통합 로그인 세션을 다시 확인해 주세요.',
+    ROTATION_LOCKED: '회전 잠금 효과가 끝날 때까지 회전할 수 없습니다.',
   }
   return t(`error.${code}`, messages[code] ?? '요청을 처리하지 못했습니다.')
 }

@@ -6,9 +6,12 @@ const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 export const MAX_PLAYERS = 4
 export const RECONNECT_GRACE_MS = 30_000
 export const ROOM_IDLE_TTL_MS = 2 * 60 * 60 * 1000
-export const SNAPSHOT_VERSION = 2
+export const SNAPSHOT_VERSION = 3
 export const ITEM_CHARGE_CELLS = 12
 export const AFK_FORFEIT_MS = 60_000
+export const ITEM_EFFECT_MS = 8_000
+export const ITEM_SEQUENCE = ['pulse', 'shield', 'garbage', 'rotationLock', 'previewJam', 'speedUp']
+export const ATTACK_ITEMS = new Set(['pulse', 'garbage', 'rotationLock', 'previewJam', 'speedUp'])
 
 function cleanMode(value) { return value === 'items' ? 'items' : 'normal' }
 
@@ -27,7 +30,10 @@ function safeTokenEqual(left, right) {
   return a.length > 0 && a.length === b.length && timingSafeEqual(a, b)
 }
 
-function publicPlayer(player) {
+function emptyItems() { return Object.fromEntries(ITEM_SEQUENCE.map((item) => [item, 0])) }
+function emptyEffects() { return { rotationLockUntil: 0, previewJamUntil: 0, speedUpUntil: 0 } }
+
+function publicPlayer(player, now) {
   const board = player.engineState?.board
   const boardPreview = Array.isArray(board) ? board.flat().map((cell) => cell ? String(cell.energy).slice(0, 1) : '-').join('') : ''
   const dangerHeight = Array.isArray(board) ? Math.max(0, ...Array.from({ length: 12 }, (_, x) => {
@@ -48,6 +54,12 @@ function publicPlayer(player) {
     gameStatus: player.gameStatus,
     items: { ...player.items },
     shielded: player.shielded,
+    effects: {
+      rotationLocked: player.effects.rotationLockUntil > now,
+      previewJammed: player.effects.previewJamUntil > now,
+      speedUp: player.effects.speedUpUntil > now,
+    },
+    effectEndsAt: { ...player.effects },
     botMoves: player.isBot ? player.botMoves : undefined,
     maxChain: player.maxChain,
     forfeited: player.forfeited,
@@ -148,9 +160,10 @@ export class RoomStore {
       player.cleared = 0
       player.gameStatus = 'playing'
       player.botMoves = 0
-      player.items = { pulse: 0, shield: 0 }
+      player.items = emptyItems()
       player.itemMilestone = 0
       player.shielded = false
+      player.effects = emptyEffects()
       player.inputSequence = 0
       player.engineState = null
       player.maxChain = 0
@@ -180,7 +193,7 @@ export class RoomStore {
     if (room.mode === 'items') {
       const milestone = Math.floor(player.cleared / ITEM_CHARGE_CELLS)
       while (player.itemMilestone < milestone) {
-        const item = player.itemMilestone % 2 === 0 ? 'pulse' : 'shield'
+        const item = ITEM_SEQUENCE[player.itemMilestone % ITEM_SEQUENCE.length]
         player.items[item] = Math.min(3, player.items[item] + 1)
         player.itemMilestone += 1
       }
@@ -212,8 +225,9 @@ export class RoomStore {
   useItem(room, playerId, itemType, targetId) {
     if (room.mode !== 'items' || room.status !== 'playing') return null
     const player = room.players.get(playerId)
-    if (!player?.connected || !['pulse', 'shield'].includes(itemType) || player.items[itemType] < 1) return null
+    if (!player?.connected || !ITEM_SEQUENCE.includes(itemType) || player.items[itemType] < 1) return null
     if (itemType === 'shield') {
+      if (player.shielded) return null
       player.items.shield -= 1
       player.shielded = true
       this.#touch(room)
@@ -221,11 +235,22 @@ export class RoomStore {
     }
     const target = room.players.get(String(targetId ?? ''))
     if (!target?.connected || target.id === playerId || target.gameStatus !== 'playing') return null
-    player.items.pulse -= 1
+    if (!ATTACK_ITEMS.has(itemType)) return null
+    player.items[itemType] -= 1
     const blocked = target.shielded
     if (blocked) target.shielded = false
+    const now = this.now()
+    if (!blocked && itemType === 'rotationLock') target.effects.rotationLockUntil = Math.max(target.effects.rotationLockUntil, now + ITEM_EFFECT_MS)
+    if (!blocked && itemType === 'previewJam') target.effects.previewJamUntil = Math.max(target.effects.previewJamUntil, now + ITEM_EFFECT_MS)
+    if (!blocked && itemType === 'speedUp') target.effects.speedUpUntil = Math.max(target.effects.speedUpUntil, now + ITEM_EFFECT_MS)
+    const eventId = this.id()
+    const gapColumn = itemType === 'garbage' ? [...String(eventId)].reduce((sum, value) => sum + value.charCodeAt(0), 0) % 12 : undefined
     this.#touch(room)
-    return { eventId: this.id(), matchId: room.matchId, itemType, sourceId: playerId, targetId: target.id, blocked }
+    return { eventId, matchId: room.matchId, itemType, sourceId: playerId, targetId: target.id, blocked, durationMs: ['rotationLock', 'previewJam', 'speedUp'].includes(itemType) ? ITEM_EFFECT_MS : undefined, gapColumn }
+  }
+
+  effectActive(player, effect, at = this.now()) {
+    return Number(player?.effects?.[effect]) > at
   }
 
   rematch(room, playerId) {
@@ -241,9 +266,10 @@ export class RoomStore {
       entry.level = 1
       entry.cleared = 0
       entry.gameStatus = 'ready'
-      entry.items = { pulse: 0, shield: 0 }
+      entry.items = emptyItems()
       entry.itemMilestone = 0
       entry.shielded = false
+      entry.effects = emptyEffects()
       entry.inputSequence = 0
       entry.engineState = null
       entry.maxChain = 0
@@ -317,7 +343,7 @@ export class RoomStore {
       mode: room.mode,
       status: room.status,
       matchId: room.matchId || null,
-      players: [...room.players.values()].map(publicPlayer),
+      players: [...room.players.values()].map((player) => publicPlayer(player, this.now())),
     }
   }
 
@@ -347,8 +373,9 @@ export class RoomStore {
           level: Number.isSafeInteger(entry.level) ? entry.level : 1,
           cleared: Number.isSafeInteger(entry.cleared) ? entry.cleared : 0,
           gameStatus: entry.gameStatus === 'gameOver' ? 'gameOver' : entry.gameStatus === 'playing' ? 'playing' : 'ready',
-          items: { pulse: Number(entry.items?.pulse) || 0, shield: Number(entry.items?.shield) || 0 },
+          items: Object.fromEntries(ITEM_SEQUENCE.map((item) => [item, Number(entry.items?.[item]) || 0])),
           itemMilestone: Number(entry.itemMilestone) || 0, shielded: Boolean(entry.shielded),
+          effects: { rotationLockUntil: Number(entry.effects?.rotationLockUntil) || 0, previewJamUntil: Number(entry.effects?.previewJamUntil) || 0, speedUpUntil: Number(entry.effects?.speedUpUntil) || 0 },
           botMoves: Number(entry.botMoves) || 0,
           inputSequence: Number(entry.inputSequence) || 0,
           engineState: entry.engineState?.rulesVersion === GRAVITY_STACK_RULES_VERSION ? entry.engineState : null,
@@ -377,7 +404,7 @@ export class RoomStore {
       isHost, ready: false, connected: true, disconnectedAt: null,
       isBot: false, botDifficulty: null, botMoves: 0,
       score: 0, level: 1, cleared: 0, gameStatus: 'ready',
-      items: { pulse: 0, shield: 0 }, itemMilestone: 0, shielded: false,
+      items: emptyItems(), itemMilestone: 0, shielded: false, effects: emptyEffects(),
       inputSequence: 0, engineState: null, maxChain: 0, forfeited: false, lastInputAt: 0,
       lastPulseTarget: '',
     }
@@ -390,7 +417,7 @@ export class RoomStore {
       isHost: false, isBot: true, botDifficulty: level, botMoves: 0,
       ready: true, connected: true, disconnectedAt: null,
       score: 0, level: 1, cleared: 0, gameStatus: 'ready',
-      items: { pulse: 0, shield: 0 }, itemMilestone: 0, shielded: false,
+      items: emptyItems(), itemMilestone: 0, shielded: false, effects: emptyEffects(),
       inputSequence: 0, engineState: null, maxChain: 0, forfeited: false, lastInputAt: 0,
       lastPulseTarget: '',
     }

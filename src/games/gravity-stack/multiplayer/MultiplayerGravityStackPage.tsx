@@ -9,7 +9,7 @@ import { GravityStackEngine } from '../core/engine'
 import type { EngineSnapshot, GameCommand } from '../core/types'
 import { useMultiplayerRoom } from './useMultiplayerRoom'
 import type { MatchStart, MultiplayerPlayer, MultiplayerRoom } from './types'
-import type { BotDifficulty, ItemEvent, MultiplayerMode } from './types'
+import type { BotDifficulty, ItemEvent, ItemType, MultiplayerMode } from './types'
 import { useMusicScope } from '../../../audio/MusicProvider'
 import { useI18n } from '../../../i18n/I18nProvider'
 import { useAtlasAuth } from '../../../auth/AuthProvider'
@@ -92,7 +92,7 @@ function MultiplayerLobby({ room, me, error, onReady, onStart, onAddBot, onRemov
   )
 }
 
-function MultiplayerMatch({ room, me, match, itemEvent, authoritativeState, onUseItem, sendInput, onForfeit, onRematch }: { room: MultiplayerRoom; me: MultiplayerPlayer; match: MatchStart; itemEvent: ItemEvent | null; authoritativeState: import('../core/types').EngineCheckpoint | null; onUseItem: (item: 'pulse' | 'shield', targetId?: string) => boolean; sendInput: (command: GameCommand) => boolean; onForfeit: () => boolean; onRematch: () => boolean }) {
+function MultiplayerMatch({ room, me, match, itemEvent, authoritativeState, onUseItem, sendInput, onForfeit, onRematch }: { room: MultiplayerRoom; me: MultiplayerPlayer; match: MatchStart; itemEvent: ItemEvent | null; authoritativeState: import('../core/types').EngineCheckpoint | null; onUseItem: (item: ItemType, targetId?: string) => boolean; sendInput: (command: GameCommand) => boolean; onForfeit: () => boolean; onRematch: () => boolean }) {
   const { t, locale } = useI18n()
   const engine = useMemo(() => new GravityStackEngine(match.seed), [match.seed])
   const [snapshot, setSnapshot] = useState(() => engine.getSnapshot())
@@ -121,13 +121,13 @@ function MultiplayerMatch({ room, me, match, itemEvent, authoritativeState, onUs
     if (itemEvent.itemType === 'shield' && itemEvent.sourceId === me.id) {
       queueMicrotask(() => setFxCue({ id: itemEvent.eventId, kind: 'shield', eyebrow: t('fx.itemReady', 'ITEM ACTIVE'), title: t('fx.shieldOn', '방어막 발동!'), detail: t('fx.blockOne', '중력 펄스 1회 방어') }))
     }
-    else if (itemEvent.itemType === 'pulse' && itemEvent.targetId === me.id) {
+    else if (itemEvent.targetId === me.id) {
       queueMicrotask(() => setFxCue(itemEvent.blocked
         ? { id: itemEvent.eventId, kind: 'blocked', eyebrow: t('fx.perfectGuard', 'PERFECT GUARD'), title: t('fx.blocked', '공격 방어!'), detail: t('fx.shieldSaved', '방어막이 보드를 지켰습니다') }
-        : { id: itemEvent.eventId, kind: 'pulse', eyebrow: t('fx.warning', 'WARNING'), title: t('fx.pulseHit', '중력 펄스!'), detail: t('fx.attackedBy', `${source?.name ?? 'RIVAL'}의 공격`, { name: source?.name ?? 'RIVAL' }) }))
+        : itemTargetCue(itemEvent, source?.name ?? 'RIVAL', t)))
     }
-    else if (itemEvent.itemType === 'pulse' && itemEvent.sourceId === me.id) {
-      queueMicrotask(() => setFxCue({ id: itemEvent.eventId, kind: 'pulse', eyebrow: t('fx.itemLaunch', 'ITEM LAUNCH'), title: t('fx.pulseSent', '중력 펄스 발사!'), detail: t('fx.targeted', `${targetPlayer?.name ?? 'RIVAL'}에게 적중`, { name: targetPlayer?.name ?? 'RIVAL' }) }))
+    else if (itemEvent.sourceId === me.id) {
+      queueMicrotask(() => setFxCue(itemSourceCue(itemEvent, targetPlayer?.name ?? 'RIVAL', t)))
     }
   }, [itemEvent, me.id, room.players, t])
 
@@ -154,7 +154,7 @@ function MultiplayerMatch({ room, me, match, itemEvent, authoritativeState, onUs
     <div className="multiplayer-match" data-testid="multiplayer-match" data-game-status={snapshot.status} data-score={snapshot.score} data-revision={snapshot.revision} data-board-signature={boardSignature} data-active-piece={snapshot.activePiece?.id ?? ''} data-next-piece={snapshot.nextPiece.id}>
       <section className="gravity-stage">
         <div className="gravity-stage__heading"><div><p className="kicker">ROOM {room.code}</p><h1>{t('multi.matchTitle', '실시간 에너지 대전')}</h1></div><p>{t('multi.sameSeed', '모든 참가자가 같은 seed로 시작했습니다.')}</p></div>
-        <GravityStackHud snapshot={snapshot} bestScore={0} />
+        <GravityStackHud snapshot={snapshot} bestScore={0} hideNext={me.effects.previewJammed} />
         <div className="board-frame" data-fx={fxCue?.kind ?? ''} tabIndex={0} aria-label={t('multi.board', '멀티플레이 Gravity Stack 게임 보드')}>
           <GravityStackCanvas engine={engine} onSnapshot={publish} simulationEnabled={false} onCommand={command} />
           {snapshot.status === 'ready' && <div className="game-overlay"><p className="kicker">SYNC COUNTDOWN</p><h2>{t('multi.sync', '동시 시작 준비 중')}</h2></div>}
@@ -167,7 +167,7 @@ function MultiplayerMatch({ room, me, match, itemEvent, authoritativeState, onUs
       <aside className="multiplayer-scoreboard" aria-label={t('multi.standings', '실시간 순위')}>
         <p className="kicker">LIVE STANDINGS</p><h2>{t('multi.standings', '실시간 순위')}</h2>
         <PlayerStandings players={room.players} currentPlayerId={me.id} />
-        {room.mode === 'items' && <section className="item-panel" aria-label={t('multi.item', '아이템')}><h3>{t('multi.item', '아이템')}</h3><p>{t('multi.itemHelp', '각 플레이어가 12셀 방전마다 펄스와 방어막을 번갈아 획득합니다.')}</p><button type="button" disabled={me.items.shield < 1 || me.shielded} onClick={() => onUseItem('shield')}>{t('multi.shield', `방어막 × ${me.items.shield}`, { count: me.items.shield })}</button><button type="button" disabled={me.items.pulse < 1 || !target} onClick={() => onUseItem('pulse', target?.id)}>{t('multi.pulse', `중력 펄스 × ${me.items.pulse}`, { count: me.items.pulse })}</button>{me.shielded && <strong>{t('multi.shieldActive', '방어막 활성')}</strong>}</section>}
+        {room.mode === 'items' && <section className="item-panel" aria-label={t('multi.item', '아이템')}><h3>{t('multi.item', '아이템')}</h3><p>{t('multi.itemHelpAll', '12셀마다 펄스 → 방어막 → 방해 블록 → 회전 잠금 → 센서 교란 → 속도 증가 순으로 획득합니다.')}</p><div className="item-grid"><button type="button" disabled={me.items.shield < 1 || me.shielded} onClick={() => onUseItem('shield')}>{t('multi.shield', `🛡 방어막 × ${me.items.shield}`, { count: me.items.shield })}</button>{(['pulse', 'garbage', 'rotationLock', 'previewJam', 'speedUp'] as ItemType[]).map((item) => <button key={item} type="button" disabled={me.items[item] < 1 || !target} onClick={() => onUseItem(item, target?.id)}>{itemButtonLabel(item, me.items[item], t)}</button>)}</div>{(me.shielded || Object.values(me.effects).some(Boolean)) && <div className="active-effects" aria-live="polite">{me.shielded && <strong>{t('multi.shieldActive', '방어막 활성')}</strong>}{me.effects.rotationLocked && <strong>{t('multi.rotationLocked', '회전 잠금')}</strong>}{me.effects.previewJammed && <strong>{t('multi.previewJammed', '센서 교란')}</strong>}{me.effects.speedUp && <strong>{t('multi.speedUpActive', '속도 증가')}</strong>}</div>}</section>}
         <p className="seed-readout">MATCH SEED <code>{match.seed}</code></p>
       </aside>
     </div>
@@ -178,6 +178,30 @@ function PlayerStandings({ players, currentPlayerId, onRemoveBot }: { players: M
   const { t, locale } = useI18n()
   const ordered = [...players].sort((a, b) => b.score - a.score || b.cleared - a.cleared || a.name.localeCompare(b.name))
   return <ol className="player-standings">{ordered.map((player) => <li key={player.id} data-self={player.id === currentPlayerId} data-connected={player.connected} data-bot={player.isBot} data-bot-moves={player.botMoves ?? undefined}><span><strong>{player.name}</strong>{player.isHost && <small>HOST</small>}{player.isBot && <small>AI · {difficultyLabel(player.botDifficulty, t)}</small>}</span><span>{t('multi.points', `${player.score.toLocaleString(locale)}점 · Lv.${player.level} · ${player.cleared}셀`, { score: player.score.toLocaleString(locale), level: player.level, cleared: player.cleared })}</span>{player.boardPreview && <span className="opponent-mini" role="img" aria-label={t('multi.danger', `${player.name} 보드 위험도 ${player.dangerHeight}/18, 최근 ${player.lastWaveCount}연쇄`, { name: player.name, danger: player.dangerHeight, chain: player.lastWaveCount })} style={{ '--danger': `${Math.min(100, player.dangerHeight / 18 * 100)}%` } as React.CSSProperties}><i />{player.lastWaveCount > 1 && <b>{player.lastWaveCount} CHAIN</b>}</span>}<em>{!player.connected ? 'OFFLINE' : player.forfeited ? 'FORFEIT' : player.gameStatus === 'gameOver' ? 'OUT' : player.gameStatus === 'playing' ? 'PLAY' : player.ready ? 'READY' : 'WAIT'}</em>{player.isBot && onRemoveBot && <button className="bot-remove" type="button" aria-label={t('multi.removeAi', `${player.name} 제거`, { name: player.name })} onClick={() => onRemoveBot(player.id)}>×</button>}</li>)}</ol>
+}
+
+type Translate = (key: string, fallback: string, values?: Record<string, string | number>) => string
+
+function itemButtonLabel(item: ItemType, count: number, t: Translate) {
+  const labels: Record<ItemType, string> = {
+    pulse: `⚡ 중력 펄스 × ${count}`,
+    shield: `🛡 방어막 × ${count}`,
+    garbage: `🧱 방해 블록 × ${count}`,
+    rotationLock: `🔒 회전 잠금 × ${count}`,
+    previewJam: `📡 센서 교란 × ${count}`,
+    speedUp: `⏩ 속도 증가 × ${count}`,
+  }
+  return t(`multi.item.${item}`, labels[item], { count })
+}
+
+function itemTargetCue(event: ItemEvent, source: string, t: Translate): ArcadeFxCue {
+  const titles: Record<Exclude<ItemType, 'shield'>, string> = { pulse: '중력 펄스!', garbage: '방해 블록 투입!', rotationLock: '회전 잠금!', previewJam: '센서 교란!', speedUp: '낙하 가속!' }
+  return { id: event.eventId, kind: event.itemType as ArcadeFxCue['kind'], eyebrow: t('fx.warning', 'WARNING'), title: t(`fx.hit.${event.itemType}`, titles[event.itemType as Exclude<ItemType, 'shield'>]), detail: t('fx.attackedBy', `${source}의 공격`, { name: source }) }
+}
+
+function itemSourceCue(event: ItemEvent, target: string, t: Translate): ArcadeFxCue {
+  const titles: Record<ItemType, string> = { pulse: '중력 펄스 발사!', shield: '방어막 발동!', garbage: '방해 블록 전송!', rotationLock: '회전 잠금 발동!', previewJam: '센서 교란 발동!', speedUp: '낙하 가속 발동!' }
+  return { id: event.eventId, kind: event.itemType, eyebrow: t('fx.itemLaunch', 'ITEM LAUNCH'), title: t(`fx.sent.${event.itemType}`, titles[event.itemType]), detail: t('fx.targeted', `${target}에게 적중`, { name: target }) }
 }
 
 function difficultyLabel(value: BotDifficulty | null, t: (key: string, fallback: string) => string) { return value === 'rookie' ? t('multi.rookie', '루키') : value === 'ace' ? t('multi.ace', '에이스') : t('multi.pilot', '파일럿') }

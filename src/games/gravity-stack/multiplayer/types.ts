@@ -1,6 +1,6 @@
 export type MultiplayerGameStatus = 'ready' | 'playing' | 'gameOver'
 export type MultiplayerMode = 'normal' | 'items'
-export type ItemType = 'pulse' | 'shield'
+export type ItemType = 'pulse' | 'shield' | 'garbage' | 'rotationLock' | 'previewJam' | 'speedUp'
 export type BotDifficulty = 'rookie' | 'pilot' | 'ace'
 
 export interface MultiplayerPlayer {
@@ -17,6 +17,8 @@ export interface MultiplayerPlayer {
   gameStatus: MultiplayerGameStatus
   items: Record<ItemType, number>
   shielded: boolean
+  effects: { rotationLocked: boolean; previewJammed: boolean; speedUp: boolean }
+  effectEndsAt: { rotationLockUntil: number; previewJamUntil: number; speedUpUntil: number }
   botMoves?: number
   maxChain: number
   forfeited: boolean
@@ -33,7 +35,7 @@ export interface MultiplayerRoom {
   players: MultiplayerPlayer[]
 }
 
-export interface ItemEvent { eventId: string; matchId: string; itemType: ItemType; sourceId: string; targetId: string; blocked: boolean }
+export interface ItemEvent { eventId: string; matchId: string; itemType: ItemType; sourceId: string; targetId: string; blocked: boolean; durationMs?: number; gapColumn?: number }
 
 export interface MatchStart {
   matchId: string

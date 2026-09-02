@@ -35,4 +35,14 @@ describe('GravityBotEngine', () => {
     bot.forceDropCells(2)
     expect(bot.engine.getSnapshot().activePiece?.y).toBe(human.getSnapshot().activePiece?.y)
   })
+
+  it('applies the same deterministic obstacle row to human and AI engines', () => {
+    const human = new GravityStackEngine('GARBAGE')
+    human.start()
+    const bot = new GravityBotEngine('GARBAGE', 'pilot', 'garbage-bot')
+    human.addGarbageRow(4)
+    bot.addGarbageRow(4)
+    expect(bot.engine.getSnapshot().board).toEqual(human.getSnapshot().board)
+    expect(bot.engine.getSnapshot().activePiece).toEqual(human.getSnapshot().activePiece)
+  })
 })
