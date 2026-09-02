@@ -39,10 +39,18 @@ export interface Point {
   y: number
 }
 
-export interface DischargeGroup {
+export interface EnergyDischargeGroup {
+  kind: 'energy'
   energy: Energy
   cells: Point[]
 }
+
+export interface FullRowDischargeGroup {
+  kind: 'fullRow'
+  cells: Point[]
+}
+
+export type DischargeGroup = EnergyDischargeGroup | FullRowDischargeGroup
 
 export interface DischargeWave {
   index: number

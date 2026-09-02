@@ -1,6 +1,6 @@
 # Arcade Atlas
 
-Arcade Atlas는 `/arcade/` 아래에서 실행되는 독립 브라우저 게임 허브입니다. 첫 번째 게임인 **Gravity Stack**은 12×18 에너지 보드에서 같은 에너지 셀을 연결해 연쇄 방전을 만드는 싱글플레이 게임입니다.
+Arcade Atlas는 `/arcade/` 아래에서 실행되는 독립 브라우저 게임 허브입니다. 첫 번째 게임인 **Gravity Stack**은 12×18 에너지 보드에서 가로줄을 완성하거나 같은 에너지 셀을 연결해 연쇄 방전을 만드는 게임입니다.
 
 현재 구현:
 
@@ -35,7 +35,7 @@ npm run server
 
 개발 서버의 `http://localhost:5173/arcade/`에서 시작합니다.
 
-통합 로그인을 시험하려면 Sketchfy Atlas와 같은 브라우저용 공개 설정을 process environment로 주입합니다. `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`만 사용하며 service role 또는 secret key는 브라우저 빌드에 넣지 않습니다.
+통합 로그인을 시험하려면 Sketchfy Atlas와 같은 브라우저용 공개 설정을 process environment로 주입합니다. `VITE_SUPABASE_URL`과 `VITE_SUPABASE_PUBLISHABLE_KEY`만 사용하며 service role 또는 secret key는 브라우저 빌드에 넣지 않습니다. Arcade는 같은 Auth 사용자와 `sketchfy_profiles`를 공유하고, 멀티플레이 서버도 access token과 프로필 닉네임을 검증합니다. 자세한 계약은 `docs/atlas-sso.md`를 참고하세요.
 
 ## 검증
 

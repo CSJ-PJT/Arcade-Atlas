@@ -1,7 +1,7 @@
 import { GravityStackEngine } from '../src/games/gravity-stack/core/engine.ts'
 import { SeededRng } from '../src/games/gravity-stack/core/rng.ts'
 
-export const BOT_ENGINE_VERSION = 'atlas-bot-engine-v2'
+export const BOT_ENGINE_VERSION = 'atlas-bot-engine-v3'
 export const BOT_MOVE_INTERVALS = { rookie: 1450, pilot: 1050, ace: 820 }
 
 function boardPenalty(board) {

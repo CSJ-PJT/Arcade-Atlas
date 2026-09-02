@@ -67,6 +67,19 @@ describe('GravityStackEngine', () => {
     expect(filledCount(engine.getSnapshot().board)).toBe(2)
   })
 
+  it('clears a pre-existing full row after the next piece locks', () => {
+    const board = createEmptyBoard()
+    const energies: Energy[] = ['nova', 'solar', 'ion', 'plasma', 'terra']
+    for (let x = 0; x < 12; x += 1) board[17][x] = { energy: energies[x % energies.length], symbol: ENERGY_SYMBOLS[energies[x % energies.length]] }
+    const engine = new GravityStackEngine('full-row', { initialBoard: board, pieceSequence: [duo, horizontal] })
+    engine.start()
+    engine.hardDrop()
+    const snapshot = engine.getSnapshot()
+    expect(snapshot.totalClearedCells).toBe(12)
+    expect(snapshot.score).toBe(240)
+    expect(filledCount(snapshot.board)).toBe(2)
+  })
+
   it('enters game over when the spawn area is occupied', () => {
     const board = createEmptyBoard()
     board[0][5] = { energy: 'terra', symbol: ENERGY_SYMBOLS.terra }

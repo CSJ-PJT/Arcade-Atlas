@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyColumnGravity, createEmptyBoard, findDischargeGroups, resolveCascades } from './clusters'
+import { applyColumnGravity, createEmptyBoard, findDischargeGroups, findFullRows, resolveCascades } from './clusters'
 import { calculateDropInterval, calculateLevel, scoreGroup } from './scoring'
 import { ENERGY_SYMBOLS, type Board, type Energy } from './types'
 
@@ -8,6 +8,31 @@ function put(board: Board, x: number, y: number, energy: Energy): void {
 }
 
 describe('energy clusters', () => {
+  it('removes a completely filled row even when its energy cells differ', () => {
+    const board = createEmptyBoard()
+    const energies: Energy[] = ['nova', 'solar', 'ion', 'plasma', 'terra']
+    for (let x = 0; x < 12; x += 1) put(board, x, 17, energies[x % energies.length])
+    expect(findFullRows(board)).toHaveLength(1)
+    const result = resolveCascades(board)
+    expect(result.waves).toHaveLength(1)
+    expect(result.waves[0].groups[0].kind).toBe('fullRow')
+    expect(result.clearedCells).toBe(12)
+    expect(result.score).toBe(240)
+    expect(result.board[17].every((cell) => cell === null)).toBe(true)
+  })
+
+  it('removes two filled rows in the same discharge wave', () => {
+    const board = createEmptyBoard()
+    for (const y of [16, 17]) {
+      for (let x = 0; x < 12; x += 1) put(board, x, y, x % 2 === 0 ? 'nova' : 'solar')
+    }
+    const result = resolveCascades(board)
+    expect(result.waves).toHaveLength(1)
+    expect(result.waves[0].groups).toHaveLength(2)
+    expect(result.clearedCells).toBe(24)
+    expect(result.board.flat().every((cell) => cell === null)).toBe(true)
+  })
+
   it('does not remove a group smaller than six', () => {
     const board = createEmptyBoard()
     for (let x = 0; x < 5; x += 1) put(board, x, 17, 'nova')
@@ -34,7 +59,7 @@ describe('energy clusters', () => {
     const board = createEmptyBoard()
     for (let x = 0; x < 6; x += 1) {
       put(board, x, 17, 'nova')
-      put(board, x + 6, 17, 'solar')
+      put(board, x + 6, 16, 'solar')
     }
     const result = resolveCascades(board)
     expect(result.waves).toHaveLength(1)

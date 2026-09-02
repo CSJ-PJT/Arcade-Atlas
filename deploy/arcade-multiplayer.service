@@ -13,6 +13,8 @@ Environment=ARCADE_HOST=127.0.0.1
 Environment=ARCADE_PORT=4188
 Environment=ARCADE_ALLOWED_ORIGINS=https://161.33.17.84
 Environment=ARCADE_STATE_FILE=/var/lib/arcade-atlas/rooms.json
+Environment=ARCADE_AUTH_REQUIRED=true
+EnvironmentFile=-/etc/arcade-atlas/auth.env
 StateDirectory=arcade-atlas
 StateDirectoryMode=0700
 ExecStart=/usr/bin/node --import tsx /opt/arcade-atlas/server/index.mjs

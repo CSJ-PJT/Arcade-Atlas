@@ -4,7 +4,7 @@ import { applyColumnGravity, cloneBoard, createEmptyBoard, resolveCascades } fro
 import { calculateDropInterval, calculateLevel } from './scoring'
 import { BOARD_HEIGHT, BOARD_WIDTH, type Board, type EngineCheckpoint, type EngineSnapshot, type GameCommand, type GameStatus, type Piece } from './types'
 
-export const GRAVITY_STACK_RULES_VERSION = 'gravity-stack-rules-v2'
+export const GRAVITY_STACK_RULES_VERSION = 'gravity-stack-rules-v3'
 export const ENGINE_SNAPSHOT_VERSION = 2
 
 interface EngineOptions {

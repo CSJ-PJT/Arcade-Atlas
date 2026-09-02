@@ -329,12 +329,14 @@ test('websocket rejects foreign origins and throttles room creation abuse', asyn
     return messages.splice(messages.findIndex(predicate), 1)[0]
   }
   await waitFor((message) => message.type === 'connected')
+  socket.send(JSON.stringify({ type: 'authenticate', protocol: 3, accessToken: '' }))
+  await waitFor((message) => message.type === 'authenticated')
   let limited = false
   for (let index = 0; index < 25 && !limited; index += 1) {
-    socket.send(JSON.stringify({ type: 'create', protocol: 2, name: `Flood ${index}` }))
+    socket.send(JSON.stringify({ type: 'create', protocol: 3, name: `Flood ${index}` }))
     const response = await waitFor((message) => message.type === 'joined' || message.type === 'error')
     if (response.type === 'error') limited = response.code === 'ROOM_CREATION_LIMITED'
-    else { socket.send(JSON.stringify({ type: 'leave', protocol: 2 })); await new Promise((resolve) => setTimeout(resolve, 10)) }
+    else { socket.send(JSON.stringify({ type: 'leave', protocol: 3 })); await new Promise((resolve) => setTimeout(resolve, 10)) }
   }
   expect(limited).toBe(true)
   socket.close()

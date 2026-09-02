@@ -12,13 +12,15 @@ import type { MatchStart, MultiplayerPlayer, MultiplayerRoom } from './types'
 import type { BotDifficulty, ItemEvent, MultiplayerMode } from './types'
 import { useMusicScope } from '../../../audio/MusicProvider'
 import { useI18n } from '../../../i18n/I18nProvider'
+import { useAtlasAuth } from '../../../auth/AuthProvider'
 import '../gravity-stack.css'
 import './multiplayer.css'
 
 export function MultiplayerGravityStackPage() {
   const { t } = useI18n()
+  const auth = useAtlasAuth()
   const multiplayer = useMultiplayerRoom()
-  const [name, setName] = useState(() => sessionStorage.getItem('arcade:player-name') || '')
+  const [name, setName] = useState(() => auth.profile?.nickname?.slice(0, 16) ?? '')
   const [code, setCode] = useState('')
   const [mode, setMode] = useState<MultiplayerMode>('normal')
   const me = multiplayer.room?.players.find((player) => player.id === multiplayer.playerId)
@@ -27,7 +29,6 @@ export function MultiplayerGravityStackPage() {
   const rememberName = () => {
     const next = name.trim().slice(0, 16)
     if (!next) return false
-    sessionStorage.setItem('arcade:player-name', next)
     return true
   }
 
@@ -46,7 +47,8 @@ export function MultiplayerGravityStackPage() {
           <p className="kicker">LIVE ENERGY RACE</p>
           <h1 id="multi-title">{t('multi.title', 'Gravity Stack 실시간 대전')}</h1>
           <p>{t('multi.description', '2~4명이 같은 seed로 동시에 시작합니다. 조작은 서버 공통 엔진이 판정하며, 각자 보드에서 더 높은 점수를 만드세요.')}</p>
-          <label>{t('multi.name', '표시 이름')}<input value={name} maxLength={16} autoComplete="nickname" onChange={(event) => setName(event.target.value)} /></label>
+          <label>{t('multi.name', '표시 이름')}<input value={name} maxLength={16} autoComplete="nickname" readOnly={import.meta.env.MODE !== 'e2e'} aria-readonly={import.meta.env.MODE !== 'e2e'} onChange={(event) => setName(event.target.value)} /></label>
+          <p className="connection-note">{t('multi.sharedProfileName', 'Sketchfy Atlas 프로필의 닉네임을 사용합니다.')}</p>
           <fieldset className="mode-selector"><legend>{t('multi.mode', '게임 모드')}</legend><label><input type="radio" name="mode" value="normal" checked={mode === 'normal'} onChange={() => setMode('normal')} /><span><strong>{t('multi.normal', '일반 모드')}</strong>{t('multi.normalHelp', '같은 조건으로 순수 점수 대결')}</span></label><label><input type="radio" name="mode" value="items" checked={mode === 'items'} onChange={() => setMode('items')} /><span><strong>{t('multi.items', '아이템 모드')}</strong>{t('multi.itemsHelp', '방전으로 방어막과 중력 펄스 획득')}</span></label></fieldset>
           <div className="multiplayer-entry__actions">
             <button className="primary-action" type="button" disabled={multiplayer.connection !== 'open' || !name.trim()} onClick={() => rememberName() && multiplayer.createRoom(name, mode)}>{t('multi.create', '새 방 만들기')}</button>

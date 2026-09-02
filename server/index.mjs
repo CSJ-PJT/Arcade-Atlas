@@ -6,8 +6,9 @@ import { GravityStackEngine, GRAVITY_STACK_RULES_VERSION } from '../src/games/gr
 import { RoomStore } from './roomStore.mjs'
 import { BOT_ENGINE_VERSION, BOT_MOVE_INTERVALS, GravityBotEngine } from './gravityBot.mjs'
 import { MAX_CONNECTIONS, MAX_CONNECTIONS_PER_ADDRESS, MAX_ROOMS, MAX_ROOM_CREATIONS_PER_WINDOW, MAX_TOTAL_BOTS, ROOM_CREATION_WINDOW_MS, SlidingWindowLimiter, clientAddress } from './security.mjs'
+import { validateAtlasAccount } from './atlasAuth.mjs'
 
-const PROTOCOL_VERSION = 2
+const PROTOCOL_VERSION = 3
 const host = process.env.ARCADE_HOST || '127.0.0.1'
 const port = Number(process.env.ARCADE_PORT || 4188)
 const heartbeatIntervalMs = Math.max(500, Number(process.env.ARCADE_HEARTBEAT_MS) || 25_000)
@@ -188,12 +189,12 @@ wss.on('connection', (socket, request) => {
     return
   }
   connectionCounts.set(address, addressConnections + 1)
-  const session = { room: null, playerId: null, lastCommandAt: 0, messageTimes: [], alive: true, superseded: false, address }
+  const session = { room: null, playerId: null, atlasAccount: null, authenticated: false, lastCommandAt: 0, messageTimes: [], alive: true, superseded: false, address }
   sockets.set(socket, session)
   send(socket, { type: 'connected', protocol: PROTOCOL_VERSION })
   socket.on('pong', () => { session.alive = true })
 
-  socket.on('message', (raw) => {
+  socket.on('message', async (raw) => {
     const now = Date.now()
     session.messageTimes = session.messageTimes.filter((time) => now - time < 10_000)
     if (session.messageTimes.length >= 180) {
@@ -208,11 +209,24 @@ wss.on('connection', (socket, request) => {
     if (!message || typeof message.type !== 'string') return fail(socket, 'INVALID_MESSAGE')
     if (message.protocol !== PROTOCOL_VERSION) return fail(socket, 'PROTOCOL_MISMATCH')
     try {
+      if (message.type === 'authenticate') {
+        const account = await validateAtlasAccount(message.accessToken)
+        if (!account) {
+          fail(socket, 'AUTH_REQUIRED')
+          socket.close(1008, 'Atlas authentication required')
+          return
+        }
+        session.atlasAccount = account
+        session.authenticated = true
+        send(socket, { type: 'authenticated' })
+        return
+      }
+      if (!session.authenticated) return fail(socket, 'AUTH_REQUIRED')
       if (message.type === 'create') {
         if (session.room) return fail(socket, 'ALREADY_IN_ROOM')
         if (store.rooms.size >= MAX_ROOMS) return fail(socket, 'ROOM_CAPACITY_REACHED')
         if (!roomCreationLimiter.allow(address)) return fail(socket, 'ROOM_CREATION_LIMITED')
-        const { room, player } = store.createRoom(message.name, message.mode)
+        const { room, player } = store.createRoom(session.atlasAccount?.nickname || message.name, message.mode)
         attachSession(socket, session, room, player)
         send(socket, { type: 'joined', playerId: player.id, reconnectToken: player.reconnectToken, room: store.publicRoom(room) })
         queuePersist()
@@ -220,7 +234,7 @@ wss.on('connection', (socket, request) => {
       }
       if (message.type === 'join') {
         if (session.room) return fail(socket, 'ALREADY_IN_ROOM')
-        const { room, player } = store.joinRoom(message.code, message.name)
+        const { room, player } = store.joinRoom(message.code, session.atlasAccount?.nickname || message.name)
         attachSession(socket, session, room, player)
         send(socket, { type: 'joined', playerId: player.id, reconnectToken: player.reconnectToken, room: store.publicRoom(room) })
         broadcastRoom(room)

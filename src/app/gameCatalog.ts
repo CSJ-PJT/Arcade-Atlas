@@ -13,7 +13,7 @@ export const gameCatalog: readonly GameCatalogEntry[] = [
     id: 'gravity-stack',
     title: 'Gravity Stack',
     eyebrow: 'ENERGY ARRAY 01',
-    description: '에너지 모듈을 배치하고, 같은 에너지 6개를 연결해 연쇄 방전을 일으키세요.',
+    description: '가로줄을 완성해 지우거나, 같은 에너지 6개를 연결해 연쇄 방전을 일으키세요.',
     route: '/stack',
     status: 'playable',
     controls: '키보드 · 모바일 터치',

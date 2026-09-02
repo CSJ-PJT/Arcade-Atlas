@@ -90,7 +90,7 @@ export function GravityStackPage() {
               <p className="kicker">ENERGY ARRAY 01</p>
               <h1 id="gravity-title">Gravity Stack</h1>
             </div>
-            <p>{t('single.rule', '같은 에너지 6개를 상하좌우로 연결해 연쇄 방전을 만드세요.')}</p>
+            <p>{t('single.rule', '가로 한 줄을 완성해 지우거나, 같은 에너지 6개를 상하좌우로 연결해 연쇄 방전을 만드세요.')}</p>
           </div>
 
           <GravityStackHud snapshot={snapshot} bestScore={bestScore} />

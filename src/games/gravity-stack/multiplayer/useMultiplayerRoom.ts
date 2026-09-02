@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EngineCheckpoint, GameCommand } from '../core/types'
 import type { BotDifficulty, ItemEvent, ItemType, MatchStart, MultiplayerMode, MultiplayerRoom } from './types'
 import { useI18n } from '../../../i18n/I18nProvider'
+import { getAtlasAuthClient } from '../../../auth/atlasAuthClient'
 
-const PROTOCOL_VERSION = 2
+const PROTOCOL_VERSION = 3
 const SESSION_KEY = 'arcade:gravity-stack:multiplayer-session:v1'
 type ConnectionState = 'connecting' | 'open' | 'reconnecting' | 'closed'
 type ClientMessage = Record<string, unknown> & { type: string }
@@ -55,12 +56,13 @@ export function useMultiplayerRoom() {
       setConnection(attemptRef.current === 0 ? 'connecting' : 'reconnecting')
       const socket = new WebSocket(socketUrl())
       socketRef.current = socket
-      socket.addEventListener('open', () => {
+      socket.addEventListener('open', async () => {
         attemptRef.current = 0
-        setConnection('open')
         setError('')
-        const credentials = credentialsRef.current
-        if (credentials) socket.send(JSON.stringify({ type: 'resume', protocol: PROTOCOL_VERSION, ...credentials }))
+        const auth = getAtlasAuthClient()
+        const { data } = auth ? await auth.auth.getSession() : { data: { session: null } }
+        if (disposed || socket.readyState !== WebSocket.OPEN) return
+        socket.send(JSON.stringify({ type: 'authenticate', protocol: PROTOCOL_VERSION, accessToken: data.session?.access_token ?? '' }))
       })
       socket.addEventListener('close', () => {
         if (socketRef.current === socket) socketRef.current = null
@@ -80,7 +82,12 @@ export function useMultiplayerRoom() {
         let message: { type?: string; [key: string]: unknown }
         try { message = JSON.parse(String(event.data)) as typeof message }
         catch { return }
-        if (message.type === 'joined' || message.type === 'resumed') {
+        if (message.type === 'authenticated') {
+          setConnection('open')
+          const credentials = credentialsRef.current
+          if (credentials) socket.send(JSON.stringify({ type: 'resume', protocol: PROTOCOL_VERSION, ...credentials }))
+        }
+        else if (message.type === 'joined' || message.type === 'resumed') {
           const nextRoom = message.room as MultiplayerRoom
           const credentials = {
             code: nextRoom.code,
@@ -181,6 +188,7 @@ function errorMessage(code: string, t: (key: string, fallback: string) => string
     ROOM_CAPACITY_REACHED: '현재 생성 가능한 방이 가득 찼습니다. 잠시 후 다시 시도해 주세요.',
     ROOM_CREATION_LIMITED: '짧은 시간에 방을 너무 많이 만들었습니다. 잠시 후 다시 시도해 주세요.',
     BOT_CAPACITY_REACHED: '현재 AI 플레이어 수용량이 가득 찼습니다.',
+    AUTH_REQUIRED: 'Atlas 통합 로그인 세션을 다시 확인해 주세요.',
   }
   return t(`error.${code}`, messages[code] ?? '요청을 처리하지 못했습니다.')
 }

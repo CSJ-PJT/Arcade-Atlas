@@ -5,7 +5,7 @@ import { AtlasLoginPage } from './AtlasLoginPage'
 import { I18nProvider } from '../i18n/I18nProvider'
 
 vi.mock('../auth/AuthProvider', () => ({
-  useAtlasAuth: () => ({ status: 'anonymous', user: null, error: '', signIn: vi.fn(), signOut: vi.fn(), retry: vi.fn() }),
+  useAtlasAuth: () => ({ status: 'anonymous', profileStatus: 'idle', profile: null, user: null, error: '', profileError: '', signIn: vi.fn(), signOut: vi.fn(), retry: vi.fn(), refreshProfile: vi.fn() }),
 }))
 
 it('explains shared Sketchfy account and alpha-beta access', () => {

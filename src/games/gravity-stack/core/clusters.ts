@@ -31,10 +31,20 @@ export function findDischargeGroups(board: Board): DischargeGroup[] {
           cells.push({ x: nextX, y: nextY })
         }
       }
-      if (cells.length >= 6) groups.push({ energy: origin.energy, cells })
+      if (cells.length >= 6) groups.push({ kind: 'energy', energy: origin.energy, cells })
     }
   }
   return groups
+}
+
+export function findFullRows(board: Board): DischargeGroup[] {
+  const rows: DischargeGroup[] = []
+  for (let y = 0; y < BOARD_HEIGHT; y += 1) {
+    if (board[y].every(Boolean)) {
+      rows.push({ kind: 'fullRow', cells: Array.from({ length: BOARD_WIDTH }, (_, x) => ({ x, y })) })
+    }
+  }
+  return rows
 }
 
 export function applyColumnGravity(board: Board): Board {
@@ -57,7 +67,8 @@ export function resolveCascades(source: Board): ResolutionResult {
   const waves: ResolutionResult['waves'] = []
 
   for (let waveIndex = 1; ; waveIndex += 1) {
-    const groups = findDischargeGroups(board)
+    const fullRows = findFullRows(board)
+    const groups = fullRows.length > 0 ? fullRows : findDischargeGroups(board)
     if (groups.length === 0) break
     const cleared = new Set(groups.flatMap((group) => group.cells.map(({ x, y }) => `${x}:${y}`)))
     for (const key of cleared) {

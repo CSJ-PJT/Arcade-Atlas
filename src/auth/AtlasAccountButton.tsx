@@ -8,7 +8,7 @@ export function AtlasAccountButton() {
   if (auth.status === 'authenticated') {
     return (
       <div className="atlas-account-pill">
-        <span><i aria-hidden="true" />{t('auth.connected', 'Atlas 계정 연결됨')}</span>
+        <span><i aria-hidden="true" />{auth.profile?.nickname ?? t('auth.connected', 'Atlas 계정 연결됨')}</span>
         <button type="button" onClick={() => void auth.signOut()}>{t('auth.logout', '로그아웃')}</button>
       </div>
     )

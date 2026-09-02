@@ -4,10 +4,10 @@ import { expect, it, vi } from 'vitest'
 import { RequireAtlasAccount } from './RequireAtlasAccount'
 import { I18nProvider } from '../i18n/I18nProvider'
 
-const state = vi.hoisted(() => ({ status: 'anonymous' }))
+const state = vi.hoisted(() => ({ status: 'anonymous', profileStatus: 'idle' }))
 
 vi.mock('./AuthProvider', () => ({
-  useAtlasAuth: () => ({ status: state.status, user: null, error: '', signIn: vi.fn(), signOut: vi.fn(), retry: vi.fn() }),
+  useAtlasAuth: () => ({ status: state.status, profileStatus: state.profileStatus, profile: null, user: null, error: '', profileError: '', signIn: vi.fn(), signOut: vi.fn(), retry: vi.fn(), refreshProfile: vi.fn() }),
 }))
 
 function renderGate() {
@@ -31,6 +31,14 @@ it('redirects an anonymous multiplayer visitor to Atlas login', () => {
 
 it('renders multiplayer after a validated Atlas session', () => {
   state.status = 'authenticated'
+  state.profileStatus = 'ready'
   renderGate()
   expect(screen.getByText('protected match')).toBeVisible()
+})
+
+it('sends a shared account without a profile to the canonical Sketchfy profile setup', () => {
+  state.status = 'authenticated'
+  state.profileStatus = 'missing'
+  renderGate()
+  expect(screen.getByRole('link', { name: '프로필 설정' })).toHaveAttribute('href', '/sketchfy/profile')
 })
